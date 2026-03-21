@@ -1,27 +1,8 @@
-graph TD
-    %% 1. Deklarimi i Node-ave me ID të shkurtra (Zgjidhja për Error-in)
-    M1[Moduli 1: Siguria dhe Perdoruesit]
-    M2[Moduli 2: Produktet dhe Inventari]
-    M3[Moduli 3: Levizjet e Stokut]
-    M4[Moduli 4: Furnitoret Shitjet dhe Financat]
-    M5[Moduli 5: Repository Pattern dhe AI]
+# StockFlow — Diagrami i Klasave (UML)
 
-    %% 2. Lidhjet mes tyre
-    M1 --> M2
-    M2 --> M3
-    M3 --> M4
-    M4 --> M5
-
-    %% 3. Klasat e tua (Definimi)
-    classDef klasaJote1 fill:#f96,stroke:#333,stroke-width:2px
-    classDef klasaJote2 fill:#32CD32,stroke:#000,stroke-width:3px
-    classDef klasaGabim fill:#ff0000,stroke:#fff,stroke-width:1px
-
-    %% 4. Zbatimi i klasave 
-    class M1,M2,M3,M4 klasaJote1
-    class M5 klasaJote2
-
-    classDiagram
+## Moduli 1 — Siguria dhe Perdoruesit
+```mermaid
+classDiagram
   class User {
     -id string
     -name string
@@ -64,12 +45,15 @@ graph TD
     -createdAt date
     +constructor(userId, type, message)
   }
-  User "many" o--|| Role : hasRole
-  User ||--o AuthToken : generates
-  User ||--o AuditLog : creates
-  User ||--o Notification : receives
+  Role "1" --> "many" User : assignedTo
+  User "1" --> "many" AuthToken : generates
+  User "1" --> "many" AuditLog : creates
+  User "1" --> "many" Notification : receives
+```
 
-  classDiagram
+## Moduli 2 — Produktet dhe Inventari
+```mermaid
+classDiagram
   class Product {
     -id string
     -name string
@@ -123,14 +107,17 @@ graph TD
     -updatedAt date
     +constructor(productId, warehouseId, quantity)
   }
-  Product "many" o--|| Category : belongsTo
-  Product "many" o--|| UnitOfMeasure : measuredBy
-  Product ||--o ProductPrice : hasPrices
-  Product ||--o CostHistory : hasCosts
-  Product ||--o WarehouseStock : storedIn
-  Warehouse ||--o WarehouseStock : stores
+  Category "1" --> "many" Product : categorizes
+  UnitOfMeasure "1" --> "many" Product : measuredBy
+  Product "1" --> "many" ProductPrice : hasPrices
+  Product "1" --> "many" CostHistory : hasCosts
+  Product "1" --> "many" WarehouseStock : storedIn
+  Warehouse "1" --> "many" WarehouseStock : stores
+```
 
-  classDiagram
+## Moduli 3 — Levizjet e Stokut
+```mermaid
+classDiagram
   class Product {
     -id string
     -name string
@@ -181,14 +168,17 @@ graph TD
     -createdAt date
     +constructor(productId, warehouseId, quantityChange, reason)
   }
-  Product ||--o StockMovement : moves
-  Product ||--o TransferItem : transferred
-  Product ||--o StockAdjustment : adjusted
-  Warehouse ||--o StockMovement : location
-  Warehouse ||--o StockTransfer : sendsFrom
-  StockTransfer ||--o TransferItem : contains
+  Product "1" --> "many" StockMovement : moves
+  Product "1" --> "many" TransferItem : transferred
+  Product "1" --> "many" StockAdjustment : adjusted
+  Warehouse "1" --> "many" StockMovement : location
+  Warehouse "1" --> "many" StockTransfer : sendsFrom
+  StockTransfer "1" --> "many" TransferItem : contains
+```
 
-  classDiagram
+## Moduli 4 — Furnitoret Shitjet dhe Financat
+```mermaid
+classDiagram
   class Supplier {
     -id string
     -name string
@@ -262,17 +252,20 @@ graph TD
     -isActive boolean
     +constructor(id, name, type)
   }
-  Supplier ||--o PurchaseOrder : supplies
-  PurchaseOrder ||--o PurchaseOrderItem : contains
-  Customer ||--o SalesOrder : places
-  SalesOrder ||--o SalesOrderItem : contains
-  SalesOrder ||--|| Invoice : generates
-  Invoice ||--o Payment : paidWith
-  PaymentMethod ||--o Payment : usedIn
+  Supplier "1" --> "many" PurchaseOrder : supplies
+  PurchaseOrder "1" --> "many" PurchaseOrderItem : contains
+  Customer "1" --> "many" SalesOrder : places
+  SalesOrder "1" --> "many" SalesOrderItem : contains
+  SalesOrder "1" --> "1" Invoice : generates
+  Invoice "1" --> "many" Payment : paidWith
+  PaymentMethod "1" --> "many" Payment : usedIn
+```
 
-  classDiagram
+## Moduli 5 — Repository Pattern dhe AI
+```mermaid
+classDiagram
   class IRepository {
-    <>
+    <<interface>>
     +getAll()
     +getById(id)
     +add(entity)
@@ -317,7 +310,7 @@ graph TD
     +constructor(productId, warehouseId, period)
     +analyze()
   }
-  IRepository  RestockPrediction : feeds
+  IRepository <|-- FileRepository : extends
+  FileRepository <|-- ProductRepository : extends
+  ProductRepository ..> RestockPrediction : feeds
   ProductRepository ..> SalesAnalytics : feeds
-
-  
