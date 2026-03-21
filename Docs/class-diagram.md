@@ -1,8 +1,27 @@
-# StockFlow — Diagrami i Klasave (UML)
+graph TD
+    %% 1. Deklarimi i Node-ave me ID të shkurtra (Zgjidhja për Error-in)
+    M1[Moduli 1: Siguria dhe Perdoruesit]
+    M2[Moduli 2: Produktet dhe Inventari]
+    M3[Moduli 3: Levizjet e Stokut]
+    M4[Moduli 4: Furnitoret Shitjet dhe Financat]
+    M5[Moduli 5: Repository Pattern dhe AI]
 
-## Moduli 1 — Siguria dhe Perdoruesit
-```mermaid
-classDiagram
+    %% 2. Lidhjet mes tyre
+    M1 --> M2
+    M2 --> M3
+    M3 --> M4
+    M4 --> M5
+
+    %% 3. Klasat e tua (Definimi)
+    classDef klasaJote1 fill:#f96,stroke:#333,stroke-width:2px
+    classDef klasaJote2 fill:#32CD32,stroke:#000,stroke-width:3px
+    classDef klasaGabim fill:#ff0000,stroke:#fff,stroke-width:1px
+
+    %% 4. Zbatimi i klasave 
+    class M1,M2,M3,M4 klasaJote1
+    class M5 klasaJote2
+
+    classDiagram
   class User {
     -id string
     -name string
@@ -45,16 +64,12 @@ classDiagram
     -createdAt date
     +constructor(userId, type, message)
   }
+  User "many" o--|| Role : hasRole
+  User ||--o AuthToken : generates
+  User ||--o AuditLog : creates
+  User ||--o Notification : receives
 
-  User }o--|| Role : hasRole
-  User ||--o{ AuthToken : generates
-  User ||--o{ AuditLog : creates
-  User ||--o{ Notification : receives
-```
-
-## Moduli 2 — Produktet dhe Inventari
-```mermaid
-classDiagram
+  classDiagram
   class Product {
     -id string
     -name string
@@ -108,18 +123,14 @@ classDiagram
     -updatedAt date
     +constructor(productId, warehouseId, quantity)
   }
+  Product "many" o--|| Category : belongsTo
+  Product "many" o--|| UnitOfMeasure : measuredBy
+  Product ||--o ProductPrice : hasPrices
+  Product ||--o CostHistory : hasCosts
+  Product ||--o WarehouseStock : storedIn
+  Warehouse ||--o WarehouseStock : stores
 
-  Product }o--|| Category : belongsTo
-  Product }o--|| UnitOfMeasure : measuredBy
-  Product ||--o{ ProductPrice : hasPrices
-  Product ||--o{ CostHistory : hasCosts
-  Product ||--o{ WarehouseStock : storedIn
-  Warehouse ||--o{ WarehouseStock : stores
-```
-
-## Moduli 3 — Levizjet e Stokut
-```mermaid
-classDiagram
+  classDiagram
   class Product {
     -id string
     -name string
@@ -170,18 +181,14 @@ classDiagram
     -createdAt date
     +constructor(productId, warehouseId, quantityChange, reason)
   }
+  Product ||--o StockMovement : moves
+  Product ||--o TransferItem : transferred
+  Product ||--o StockAdjustment : adjusted
+  Warehouse ||--o StockMovement : location
+  Warehouse ||--o StockTransfer : sendsFrom
+  StockTransfer ||--o TransferItem : contains
 
-  Product ||--o{ StockMovement : moves
-  Product ||--o{ TransferItem : transferred
-  Product ||--o{ StockAdjustment : adjusted
-  Warehouse ||--o{ StockMovement : location
-  Warehouse ||--o{ StockTransfer : sendsFrom
-  StockTransfer ||--o{ TransferItem : contains
-```
-
-## Moduli 4 — Furnitoret, Shitjet dhe Financat
-```mermaid
-classDiagram
+  classDiagram
   class Supplier {
     -id string
     -name string
@@ -255,21 +262,17 @@ classDiagram
     -isActive boolean
     +constructor(id, name, type)
   }
-
-  Supplier ||--o{ PurchaseOrder : supplies
-  PurchaseOrder ||--o{ PurchaseOrderItem : contains
-  Customer ||--o{ SalesOrder : places
-  SalesOrder ||--o{ SalesOrderItem : contains
+  Supplier ||--o PurchaseOrder : supplies
+  PurchaseOrder ||--o PurchaseOrderItem : contains
+  Customer ||--o SalesOrder : places
+  SalesOrder ||--o SalesOrderItem : contains
   SalesOrder ||--|| Invoice : generates
-  Invoice ||--o{ Payment : paidWith
-  PaymentMethod ||--o{ Payment : usedIn
-```
+  Invoice ||--o Payment : paidWith
+  PaymentMethod ||--o Payment : usedIn
 
-## Moduli 5 — Repository Pattern dhe AI
-```mermaid
-classDiagram
+  classDiagram
   class IRepository {
-    <<interface>>
+    <>
     +getAll()
     +getById(id)
     +add(entity)
@@ -314,9 +317,7 @@ classDiagram
     +constructor(productId, warehouseId, period)
     +analyze()
   }
-
-  IRepository <|-- FileRepository : extends
-  FileRepository <|-- ProductRepository : extends
-  ProductRepository ..> RestockPrediction : feeds
+  IRepository  RestockPrediction : feeds
   ProductRepository ..> SalesAnalytics : feeds
-```
+
+  
