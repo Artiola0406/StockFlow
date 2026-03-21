@@ -1,16 +1,6 @@
 
 <div align="center">
 
-![React](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=for-the-badge\&logo=react\&logoColor=black)
-![TailwindCSS](https://img.shields.io/badge/Styling-TailwindCSS-06B6D4?style=for-the-badge\&logo=tailwindcss\&logoColor=white)
-![Node.js](https://img.shields.io/badge/Backend-Node.js_20-339933?style=for-the-badge\&logo=nodedotjs\&logoColor=white)
-![Express.js](https://img.shields.io/badge/API-Express.js-000000?style=for-the-badge\&logo=express\&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL_15-4169E1?style=for-the-badge\&logo=postgresql\&logoColor=white)
-![JWT](https://img.shields.io/badge/Auth-JWT-black?style=for-the-badge\&logo=jsonwebtokens)
-![Git](https://img.shields.io/badge/Version_Control-Git-F05032?style=for-the-badge\&logo=git\&logoColor=white)
-
-<br>
-
 ![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
 ![Project Type](https://img.shields.io/badge/Project-Academic-blue?style=flat-square)
 ![Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-orange?style=flat-square)
@@ -86,4 +76,4 @@ Sistemi ka role të ndryshme: Administrator, Menaxher dhe Staf, me akses të kon
 <br>
 
 
-© 2026 Artiola Qollaku. Ky projekt është krijuar për qëllime akademike si pjesë e lëndës Inxhinieri Softuerike. Të gjitha të drejtat e rezervuara.
+© 2026 Artiola Qollaku. Ky projekt është krijuar për qëllime akademike si pjesë e lëndës Inxhinieri Softuerike.
