@@ -1,6 +1,6 @@
 # StockFlow — Diagrami i Klasave (UML)
 
-## Moduli 1 — Siguria & Përdoruesit
+## Moduli 1 — Siguria dhe Perdoruesit
 ```mermaid
 classDiagram
   class User {
@@ -46,13 +46,13 @@ classDiagram
     +constructor(userId, type, message)
   }
 
-  User }o--|| Role : ka rol
-  User ||--o{ AuthToken : gjeneron
-  User ||--o{ AuditLog : krijon
-  User ||--o{ Notification : merr
+  User }o--|| Role : hasRole
+  User ||--o{ AuthToken : generates
+  User ||--o{ AuditLog : creates
+  User ||--o{ Notification : receives
 ```
 
-## Moduli 2 — Produktet & Inventari
+## Moduli 2 — Produktet dhe Inventari
 ```mermaid
 classDiagram
   class Product {
@@ -109,15 +109,15 @@ classDiagram
     +constructor(productId, warehouseId, quantity)
   }
 
-  Product }o--|| Category : i përket
-  Product }o--|| UnitOfMeasure : matet me
-  Product ||--o{ ProductPrice : ka çmime
-  Product ||--o{ CostHistory : ka kosto
-  Product ||--o{ WarehouseStock : ruhet në
-  Warehouse ||--o{ WarehouseStock : ruan
+  Product }o--|| Category : belongsTo
+  Product }o--|| UnitOfMeasure : measuredBy
+  Product ||--o{ ProductPrice : hasPrices
+  Product ||--o{ CostHistory : hasCosts
+  Product ||--o{ WarehouseStock : storedIn
+  Warehouse ||--o{ WarehouseStock : stores
 ```
 
-## Moduli 3 — Lëvizjet e Stokut
+## Moduli 3 — Levizjet e Stokut
 ```mermaid
 classDiagram
   class Product {
@@ -171,15 +171,15 @@ classDiagram
     +constructor(productId, warehouseId, quantityChange, reason)
   }
 
-  Product ||--o{ StockMovement : lëviz
-  Product ||--o{ TransferItem : transferohet
-  Product ||--o{ StockAdjustment : rregullohet
-  Warehouse ||--o{ StockMovement : ndodh në
-  Warehouse ||--o{ StockTransfer : dërgon nga
-  StockTransfer ||--o{ TransferItem : përmban
+  Product ||--o{ StockMovement : moves
+  Product ||--o{ TransferItem : transferred
+  Product ||--o{ StockAdjustment : adjusted
+  Warehouse ||--o{ StockMovement : location
+  Warehouse ||--o{ StockTransfer : sendsFrom
+  StockTransfer ||--o{ TransferItem : contains
 ```
 
-## Moduli 4 — Furnitorët & Shitjet & Financat
+## Moduli 4 — Furnitoret, Shitjet dhe Financat
 ```mermaid
 classDiagram
   class Supplier {
@@ -256,16 +256,16 @@ classDiagram
     +constructor(id, name, type)
   }
 
-  Supplier ||--o{ PurchaseOrder : furnizon
-  PurchaseOrder ||--o{ PurchaseOrderItem : përmban
-  Customer ||--o{ SalesOrder : blen
-  SalesOrder ||--o{ SalesOrderItem : përmban
-  SalesOrder ||--|| Invoice : gjeneron
-  Invoice ||--o{ Payment : paguhet me
-  PaymentMethod ||--o{ Payment : metodë
+  Supplier ||--o{ PurchaseOrder : supplies
+  PurchaseOrder ||--o{ PurchaseOrderItem : contains
+  Customer ||--o{ SalesOrder : places
+  SalesOrder ||--o{ SalesOrderItem : contains
+  SalesOrder ||--|| Invoice : generates
+  Invoice ||--o{ Payment : paidWith
+  PaymentMethod ||--o{ Payment : usedIn
 ```
 
-## Moduli 5 — Repository Pattern & AI
+## Moduli 5 — Repository Pattern dhe AI
 ```mermaid
 classDiagram
   class IRepository {
