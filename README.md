@@ -1,37 +1,79 @@
-📦 StockFlow
-Sistem i Menaxhimit të Inventarit
-🎓 Projekt Akademik — Lënda Inxhinieri Softuerike 🏫 Universiteti i Mitrovicës "Isa Boletini"
 
-📋 Përshkrimi i Projektit
-StockFlow është një aplikacion web për menaxhimin e inventarit i dizajnuar për biznese të vogla dhe të mesme. Sistemi u mundëson përdoruesve të regjistrojnë, organizojnë dhe monitorojnë produktet e tyre në mënyrë të thjeshtë dhe efikase.
+<div align="center">
 
-Aplikacioni përfshin autentifikim të sigurt, menaxhim të produkteve dhe kategorive, si dhe monitorim të stokut në kohë reale.
+![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
+![Project Type](https://img.shields.io/badge/Project-Academic-blue?style=flat-square)
+![Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-orange?style=flat-square)
+![Pattern](https://img.shields.io/badge/Pattern-Repository-purple?style=flat-square)
 
-Kur sasia e një produkti bie nën nivelin minimal të përcaktuar, sistemi gjeneron njoftime automatike, duke ndihmuar bizneset të shmangin mungesën e produkteve.
+</div>
 
-Gjithashtu sistemi ofron një dashboard informativ ku përdoruesit mund të shohin statistika të rëndësishme si:
+# 📦 StockFlow — Sistem i Menaxhimit të Inventarit
 
-numrin total të produkteve
-vlerën totale të inventarit
-produktet me stok të ulët
+<p align="center">
+  <strong>Një zgjidhje e avancuar web për menaxhimin e stokut në kohë reale, me shumë depo dhe inteligjencë artificiale për parashikimin e porosive.</strong>
+</p>
+
+<br>
+
+📖 Përshkrimi i Projektit
+
+StockFlow është një sistem i avancuar i menaxhimit të inventarit i ndërtuar si aplikacion web i plotë me React.js, Node.js dhe PostgreSQL. Sistemi është dizajnuar për biznese që operojnë me shumë depo dhe kërkojnë kontroll të saktë në kohë reale mbi mallrat, porositë dhe financat.
+
+Sistemi mbulon ciklin e plotë të jetës së një produkti — nga furnizimi nga furnitorët, pranimi dhe ruajtja në depo, lëvizjet ndërmjet depove, deri te shitja tek klientët dhe gjenerimi i faturave dhe pagesave. Çdo veprim regjistrohet automatikisht përmes një sistemi auditimi. Sistemi mbështet multi-warehouse, kontroll stoku në nivel të detajuar, dhe njoftime automatike kur produktet bien nën nivelin minimal. Përfshin edhe një modul AI të quajtur Smart Restock Prediction që analizon historikun e shitjeve dhe sugjeron automatikisht kur dhe sa produkte duhet të porositen.
+
+Sistemi ka role të ndryshme: Administrator, Menaxher dhe Staf, me akses të kontrolluar përmes JWT autentifikimit. Arkitektura ndjek Clean Architecture dhe Repository Pattern me 30 klasa të ndara në 5 module.
+
+<br>
+
+🛠 Teknologjitë e Përdorura
+
+| Sektori            | Teknologjitë               |
+| ------------------ | -------------------------- |
+| 🎨 Frontend        | ⚛️ React · 🎨 Tailwind CSS |
+| ⚙️ Backend         | 🟢 Node.js · ⚡ Express.js  |
+| 🗄️ Database       | 🐘 PostgreSQL              |
+| 🔧 Version Control | 🐙 Git                     |
+
+<br>
+
 ✨ Funksionalitetet Kryesore
-🔐 Regjistrim dhe login i sigurt
-📦 Shtim, editim dhe fshirje e produkteve
-📁 Kategorizimi i produkteve dhe furnitorëve
-📊 Dashboard me statistika në kohë reale
-📉 Njoftime automatike për stok të ulët
-📈 Raporte për gjendjen e inventarit
-📱 Dizajn responsiv (funksionon në telefon dhe desktop)
-🛠️ Teknologjitë e Përdorura
-Shtresa	Teknologjia
-🎨 Frontend	React.js, Tailwind CSS, Chart.js
-⚙️ Backend	Node.js, Express.js
-🗄️ Database	PostgreSQL
-🔐 Autentifikim	JWT (JSON Web Token)
-🚀 Deploy	Vercel, Render, Neon
-👨‍💻 Autori
-Artiola Qollaku 🎓 Fakulteti i Inxhinierisë Kompjuterike 🏫 Universiteti i Mitrovicës "Isa Boletini"
 
-📧 Email: artiola.qollaku@umib.net
+* 🔐 Autentifikim i Sigurt: JWT dhe 3 role të ndryshme (Admin, Menaxher, Staf)
+* 📦 Menaxhim Produktesh: Menaxhim i detajuar me kategori, çmime dinamike dhe historik kostoje
+* 🏢 Multi-Warehouse: Kontroll i saktë i stokut në shumë depo njëkohësisht
+* 🔄 Lëvizjet e Stokut: Regjistrim i hyrjeve, daljeve, transfereve dhe rregullimeve manuale
+* 📑 Menaxhim Furnitorësh dhe Porosish Blerje
+* 💰 Menaxhim Shitjesh: Porosi, fatura dhe pagesa
+* 🔔 Njoftime Automatike për stok minimal
+* 🤖 Smart Restock Prediction
+* 📊 Dashboard Interaktiv me statistika në kohë reale
 
-🔗 GitHub: https://github.com/Artiola0406
+<br>
+
+🧱 Modulet e Sistemit
+
+| Moduli          | Përshkrimi                              | Klasat Kryesore                                                   |
+| :-------------- | :-------------------------------------- | :---------------------------------------------------------------- |
+| Siguria         | Menaxhon autentifikimin dhe autorizimin | User, Role, AuthToken, AuditLog, Notification                     |
+| Inventari       | Produkte dhe stok                       | Product, Category, Warehouse, WarehouseStock                      |
+| Lëvizjet        | Lëvizjet e stokut                       | StockMovement, StockTransfer, TransferItem, StockAdjustment       |
+| Financat        | Shitje dhe pagesa                       | Supplier, PurchaseOrder, SalesOrder, Invoice, Payment             |
+| AI & Repository | Analitika dhe pattern                   | IRepository, FileRepository, ProductRepository, RestockPrediction |
+
+
+👩‍💻 Autori
+
+|              |                                                                  |
+| :----------- | :--------------------------------------------------------------- |
+| Emri         | Artiola Qollaku                                                  |
+| Universiteti | Universiteti "Isa Boletini" — Mitrovicë                          |
+| Fakulteti    | Fakulteti i Inxhinierisë Kompjuterike                            |
+| Lënda        | Inxhinieri Softuerike                                            |
+| GitHub       | [https://github.com/Artiola0406](https://github.com/Artiola0406) |
+| Email        | [artiola.qollaku@umib.net](mailto:artiola.qollaku@umib.net)      |
+
+<br>
+
+
+© 2026 Artiola Qollaku. Ky projekt është krijuar për qëllime akademike si pjesë e lëndës Inxhinieri Softuerike.
