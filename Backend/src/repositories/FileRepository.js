@@ -40,6 +40,22 @@ class FileRepository extends IRepository {
     return entity;
   }
 
+  update(id, updatedEntity) {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return null;
+    this.data[index] = { ...this.data[index], ...updatedEntity };
+    this.save();
+    return this.data[index];
+  }
+
+  delete(id) {
+    const index = this.data.findIndex(item => item.id === id);
+    if (index === -1) return false;
+    this.data.splice(index, 1);
+    this.save();
+    return true;
+  }
+
   save() {
     if (this.data.length === 0) return;
     const headers = Object.keys(this.data[0]).join(',');
