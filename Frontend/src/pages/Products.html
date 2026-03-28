@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow — Produktet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 20px; }
+    h1 { color: #2d3748; margin-bottom: 20px; }
+    h2 { color: #4a5568; margin-bottom: 12px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    input, select { width: 100%; padding: 8px 12px; margin-bottom: 12px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 14px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .btn-blue { background: #4299e1; color: white; width: 100%; margin-top: 4px; }
+    .btn-blue:hover { background: #3182ce; }
+    .btn-yellow { background: #ecc94b; color: #744210; padding: 6px 12px; font-size: 12px; }
+    .btn-red { background: #fc8181; color: #742a2a; padding: 6px 12px; font-size: 12px; }
+    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .search-bar input { margin: 0; }
+    .search-bar .btn { width: auto; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #edf2f7; padding: 10px; text-align: left; }
+    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+    tr:hover { background: #f7fafc; }
+    .msg { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
+    .success { background: #c6f6d5; color: #276749; }
+    .error { background: #fed7d7; color: #742a2a; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: white; padding: 24px; border-radius: 8px; width: 100%; max-width: 400px; }
+    .modal-content h2 { margin-bottom: 16px; }
+    .modal-buttons { display: flex; gap: 8px; margin-top: 8px; }
+    .modal-buttons .btn { flex: 1; }
+    .btn-gray { background: #e2e8f0; color: #4a5568; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📦 StockFlow — Menaxhimi i Produkteve</h1>
+
+  <!-- FORMA E SHTIMIT -->
+  <div class="card">
+    <h2>➕ Shto Produkt të Ri</h2>
+    <div id="formMsg"></div>
+    <input type="text" id="name" placeholder="Emri i produktit *">
+    <input type="text" id="sku" placeholder="SKU (p.sh. SKU-006) *">
+    <input type="number" id="price" placeholder="Çmimi në € *" min="0" step="0.01">
+    <input type="number" id="quantity" placeholder="Sasia *" min="0">
+    <input type="text" id="category" placeholder="Kategoria">
+    <button class="btn btn-blue" onclick="addProduct()">✅ Shto Produktin</button>
+  </div>
+
+  <!-- LISTA E PRODUKTEVE -->
+  <div class="card">
+    <h2>📋 Lista e Produkteve</h2>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Kërko sipas emrit ose kategorisë...">
+      <button class="btn btn-blue" onclick="loadProducts()">🔍 Kërko</button>
+      <button class="btn btn-gray" onclick="clearSearch()">✖ Pastro</button>
+    </div>
+    <div id="listMsg"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Emri</th>
+          <th>SKU</th>
+          <th>Çmimi</th>
+          <th>Sasia</th>
+          <th>Kategoria</th>
+          <th>Veprimet</th>
+        </tr>
+      </thead>
+      <tbody id="productList"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL PËR UPDATE -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <h2>✏️ Përditëso Produktin</h2>
+    <input type="hidden" id="editId">
+    <input type="text" id="editName" placeholder="Emri">
+    <input type="text" id="editSku" placeholder="SKU">
+    <input type="number" id="editPrice" placeholder="Çmimi" min="0" step="0.01">
+    <input type="number" id="editQuantity" placeholder="Sasia" min="0">
+    <input type="text" id="editCategory" placeholder="Kategoria">
+    <div id="editMsg"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-blue" onclick="saveUpdate()">💾 Ruaj</button>
+      <button class="btn btn-gray" onclick="closeModal()">✖ Anulo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:5000/api/products';
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = 'msg ' + type;
+    el.textContent = text;
+    setTimeout(() => el.textContent = '', 3000);
+  }
+
+  async function loadProducts() {
+    const filter = document.getElementById('searchInput').value;
+    const url = filter ? `${API}?filter=${filter}` : API;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const tbody = document.getElementById('productList');
+      tbody.innerHTML = '';
+      if (!data.data || data.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Nuk ka produkte.</td></tr>';
+        return;
+      }
+      data.data.forEach(p => {
+        tbody.innerHTML += `<tr>
+          <td>${p.name}</td>
+          <td>${p.sku}</td>
+          <td>€${parseFloat(p.price).toFixed(2)}</td>
+          <td>${p.quantity}</td>
+          <td>${p.category}</td>
+          <td>
+            <button class="btn btn-yellow" onclick="openEdit('${p.id}','${p.name}','${p.sku}','${p.price}','${p.quantity}','${p.category}')">✏️ Ndrysho</button>
+            <button class="btn btn-red" onclick="deleteProduct('${p.id}','${p.name}')">🗑️ Fshi</button>
+          </td>
+        </tr>`;
+      });
+    } catch (e) {
+      showMsg('listMsg', '❌ Serveri nuk është aktiv. Starto: node src/app.js', 'error');
+    }
+  }
+
+  async function addProduct() {
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('name').value,
+          sku: document.getElementById('sku').value,
+          price: document.getElementById('price').value,
+          quantity: document.getElementById('quantity').value,
+          category: document.getElementById('category').value
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showMsg('formMsg', '✅ Produkti u shtua me sukses!', 'success');
+        ['name','sku','price','quantity','category'].forEach(id => document.getElementById(id).value = '');
+        loadProducts();
+      } else {
+        showMsg('formMsg', '❌ ' + data.message, 'error');
+      }
+    } catch (e) {
+      showMsg('formMsg', '❌ Serveri nuk është aktiv!', 'error');
+    }
+  }
+
+  function openEdit(id, name, sku, price, quantity, category) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editName').value = name;
+    document.getElementById('editSku').value = sku;
+    document.getElementById('editPrice').value = price;
+    document.getElementById('editQuantity').value = quantity;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editModal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+    document.getElementById('editMsg').textContent = '';
+  }
+
+  async function saveUpdate() {
+    const id = document.getElementById('editId').value;
+    try {
+      const res = await fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('editName').value,
+          sku: document.getElementById('editSku').value,
+          price: document.getElementById('editPrice').value,
+          quantity: document.getElementById('editQuantity').value,
+          category: document.getElementById('editCategory').value
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal();
+        showMsg('listMsg', '✅ Produkti u përditësua!', 'success');
+        loadProducts();
+      } else {
+        document.getElementById('editMsg').textContent = '❌ ' + data.message;
+        document.getElementById('editMsg').className = 'msg error';
+      }
+    } catch (e) {
+      document.getElementById('editMsg').textContent = '❌ Gabim!';
+    }
+  }
+
+  async function deleteProduct(id, name) {
+    if (!confirm(`A jeni i sigurt që doni të fshini "${name}"?`)) return;
+    try {
+      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showMsg('listMsg', '✅ Produkti u fshi!', 'success');
+        loadProducts();
+      } else {
+        showMsg('listMsg', '❌ ' + data.message, 'error');
+      }
+    } catch (e) {
+      showMsg('listMsg', '❌ Gabim!', 'error');
+    }
+  }
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    loadProducts();
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>
