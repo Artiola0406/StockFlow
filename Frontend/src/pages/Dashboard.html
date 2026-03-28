@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow — Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+    nav { background: #2d3748; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-wrap: wrap; }
+    nav .logo { color: white; font-size: 20px; font-weight: bold; }
+    nav .links { display: flex; gap: 4px; flex-wrap: wrap; }
+    nav a { color: #a0aec0; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+    nav a:hover { background: #4a5568; color: white; }
+    nav a.active { background: #4299e1; color: white; }
+    .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .stat-card .num { font-size: 28px; font-weight: 700; }
+    .stat-card .lbl { font-size: 13px; color: #718096; margin-top: 4px; }
+    .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h2 { color: #2d3748; margin-bottom: 16px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #edf2f7; padding: 10px 12px; text-align: left; color: #4a5568; }
+    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #2d3748; }
+    tr:last-child td { border-bottom: none; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; text-decoration: none; display: inline-block; }
+    .btn-blue { background: #4299e1; color: white; }
+    .btn-blue:hover { background: #3182ce; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .empty { text-align: center; color: #a0aec0; padding: 20px; }
+    @media (max-width: 600px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      nav .links { display: none; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="logo">📦 StockFlow</div>
+  <div class="links">
+    <a href="Dashboard.html" class="active">📊 Dashboard</a>
+    <a href="Products.html">📦 Produktet</a>
+    <a href="Warehouses.html">🏭 Depo</a>
+    <a href="StockMovements.html">🔄 Lëvizjet</a>
+    <a href="Suppliers.html">🚚 Furnitorët</a>
+    <a href="Orders.html">🛒 Porositë</a>
+    <a href="Customers.html">👥 Klientët</a>
+    <a href="Reports.html">📈 Raportet</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="totalProducts" style="color:#4299e1">0</div>
+      <div class="lbl">Produkte Gjithsej</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="totalValue" style="color:#48bb78">€0</div>
+      <div class="lbl">Vlera Totale</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="lowStock" style="color:#fc8181">0</div>
+      <div class="lbl">Stok i Ulët</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="categories" style="color:#ed8936">0</div>
+      <div class="lbl">Kategori Aktive</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚠️ Produktet me Stok të Ulët</h2>
+    <table>
+      <thead>
+        <tr><th>Emri</th><th>SKU</th><th>Sasia</th><th>Kategoria</th></tr>
+      </thead>
+      <tbody id="lowStockTable"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>⚡ Veprime të Shpejta</h2>
+    <div class="actions">
+      <a href="Products.html" class="btn btn-blue">➕ Shto Produkt</a>
+      <a href="StockMovements.html" class="btn btn-blue">🔄 Shiko Lëvizjet</a>
+      <a href="Reports.html" class="btn btn-blue">📈 Raportet</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadDashboard() {
+    try {
+      const res = await fetch('http://localhost:5000/api/products');
+      const data = await res.json();
+      const products = data.data || [];
+
+      document.getElementById('totalProducts').textContent = products.length;
+
+      const totalVal = products.reduce((s, p) => s + parseFloat(p.price) * parseInt(p.quantity), 0);
+      document.getElementById('totalValue').textContent = '€' + totalVal.toFixed(2);
+
+      const low = products.filter(p => parseInt(p.quantity) < 5);
+      document.getElementById('lowStock').textContent = low.length;
+
+      const cats = [...new Set(products.map(p => p.category))];
+      document.getElementById('categories').textContent = cats.length;
+
+      const tbody = document.getElementById('lowStockTable');
+      if (low.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">✅ Asnjë produkt me stok të ulët!</td></tr>';
+      } else {
+        tbody.innerHTML = low.map(p => `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.sku}</td>
+            <td style="color:#e53e3e;font-weight:bold">${p.quantity}</td>
+            <td>${p.category}</td>
+          </tr>`).join('');
+      }
+    } catch (e) {
+      document.getElementById('lowStockTable').innerHTML = '<tr><td colspan="4" class="empty">❌ Serveri nuk është aktiv!</td></tr>';
+    }
+  }
+  loadDashboard();
+</script>
+</body>
+</html>

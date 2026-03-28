@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow — Porositë</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; }
+nav { background: #2d3748; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+nav .logo { color: white; font-size: 20px; font-weight: bold; }
+nav .links { display: flex; gap: 4px; flex-wrap: wrap; }
+nav a { color: #a0aec0; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+nav a:hover { background: #4a5568; color: white; }
+nav a.active { background: #4299e1; color: white; }
+.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.stat-card .num { font-size: 28px; font-weight: 700; }
+.stat-card .lbl { font-size: 13px; color: #718096; margin-top: 4px; }
+.card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card h2 { color: #2d3748; margin-bottom: 16px; font-size: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label { display: block; font-size: 13px; color: #4a5568; margin-bottom: 4px; }
+input, select { width: 100%; padding: 9px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
+input:focus, select:focus { outline: none; border-color: #4299e1; }
+.btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.btn-blue { background: #4299e1; color: white; width: 100%; margin-top: 12px; }
+.btn-yellow { background: #f6c90e; color: #744210; padding: 5px 12px; font-size: 12px; }
+.btn-red { background: #fc8181; color: #742a2a; padding: 5px 12px; font-size: 12px; }
+.btn-gray { background: #e2e8f0; color: #4a5568; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { background: #edf2f7; padding: 10px 12px; text-align: left; color: #4a5568; }
+td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+tr:last-child td { border-bottom: none; }
+.badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.badge-yellow { background: #fefcbf; color: #744210; }
+.badge-blue { background: #bee3f8; color: #2b6cb0; }
+.badge-green { background: #c6f6d5; color: #276749; }
+.badge-red { background: #fed7d7; color: #742a2a; }
+.msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 14px; display: none; }
+.msg.show { display: block; }
+.success { background: #c6f6d5; color: #276749; }
+.error { background: #fed7d7; color: #742a2a; }
+.overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+.overlay.show { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 24px; width: 100%; max-width: 420px; }
+.modal h2 { margin-bottom: 16px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 12px; }
+.modal-btns .btn { flex: 1; }
+.actions { display: flex; gap: 6px; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">📦 StockFlow</div>
+<div class="links">
+<a href="Dashboard.html">📊 Dashboard</a>
+<a href="Products.html">📦 Produktet</a>
+<a href="Warehouses.html">🏭 Depo</a>
+<a href="StockMovements.html">🔄 Lëvizjet</a>
+<a href="Suppliers.html">🚚 Furnitorët</a>
+<a href="Orders.html" class="active">🛒 Porositë</a>
+<a href="Customers.html">👥 Klientët</a>
+<a href="Reports.html">📈 Raportet</a>
+</div>
+</nav>
+
+<div class="container">
+<div class="stats">
+<div class="stat-card">
+<div class="num" id="totalOrd" style="color:#4299e1">0</div>
+<div class="lbl">Total Porosi</div>
+</div>
+<div class="stat-card">
+<div class="num" id="confirmed" style="color:#48bb78">0</div>
+<div class="lbl">Të Konfirmuara</div>
+</div>
+<div class="stat-card">
+<div class="num" id="pending" style="color:#ed8936">0</div>
+<div class="lbl">Në Pritje</div>
+</div>
+</div>
+
+<div class="card">
+<h2>➕ Shto Porosi</h2>
+<div class="msg" id="formMsg"></div>
+<div class="form-grid">
+<div><label>Klienti *</label><input type="text" id="customerName" placeholder="Gent Hoxha"></div>
+<div><label>Produkti *</label><input type="text" id="productName" placeholder="Laptop Dell XPS"></div>
+<div><label>Sasia *</label><input type="number" id="quantity" placeholder="1" min="1"></div>
+<div><label>Totali (€) *</label><input type="number" id="totalAmount" placeholder="999.99" min="0" step="0.01"></div>
+<div style="grid-column:1/-1"><label>Statusi</label>
+<select id="status">
+<option value="Në pritje">⏳ Në pritje</option>
+<option value="Konfirmuar">✅ Konfirmuar</option>
+<option value="Dërguar">🚚 Dërguar</option>
+<option value="Anuluar">❌ Anuluar</option>
+</select>
+</div>
+</div>
+<button class="btn btn-blue" onclick="addOrder()">✅ Shto Porosinë</button>
+</div>
+
+<div class="card">
+<h2>🛒 Lista e Porosive</h2>
+<div class="msg" id="listMsg"></div>
+<table>
+<thead><tr><th>Klienti</th><th>Produkti</th><th>Sasia</th><th>Totali</th><th>Statusi</th><th>Data</th><th>Veprimet</th></tr></thead>
+<tbody id="orderList"></tbody>
+</table>
+</div>
+</div>
+
+<div class="overlay" id="overlay">
+<div class="modal">
+<h2>✏️ Ndrysho Porosinë</h2>
+<input type="hidden" id="editId">
+<label>Klienti</label><input type="text" id="editCustomer" style="margin-bottom:10px">
+<label>Produkti</label><input type="text" id="editProduct" style="margin-bottom:10px">
+<label>Sasia</label><input type="number" id="editQty" style="margin-bottom:10px">
+<label>Totali (€)</label><input type="number" id="editTotal" style="margin-bottom:10px">
+<label>Statusi</label>
+<select id="editStatus" style="margin-bottom:10px">
+<option value="Në pritje">⏳ Në pritje</option>
+<option value="Konfirmuar">✅ Konfirmuar</option>
+<option value="Dërguar">🚚 Dërguar</option>
+<option value="Anuluar">❌ Anuluar</option>
+</select>
+<div class="modal-btns">
+<button class="btn btn-blue" onclick="saveEdit()">💾 Ruaj</button>
+<button class="btn btn-gray" onclick="closeModal()">✖ Anulo</button>
+</div>
+</div>
+</div>
+
+<script>
+const KEY = 'orders';
+function getData() { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+function saveData(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+
+function showMsg(id, text, type) {
+const el = document.getElementById(id);
+el.textContent = text; el.className = 'msg ' + type + ' show';
+setTimeout(() => { el.className = 'msg'; }, 3000);
+}
+
+function getBadge(status) {
+const map = { 'Në pritje': 'badge-yellow', 'Konfirmuar': 'badge-blue', 'Dërguar': 'badge-green', 'Anuluar': 'badge-red' };
+return map[status] || 'badge-gray';
+}
+
+function render() {
+const data = getData();
+document.getElementById('totalOrd').textContent = data.length;
+document.getElementById('confirmed').textContent = data.filter(o => o.status === 'Konfirmuar').length;
+document.getElementById('pending').textContent = data.filter(o => o.status === 'Në pritje').length;
+const tbody = document.getElementById('orderList');
+if (data.length === 0) {
+tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#a0aec0;padding:20px">Nuk ka porosi.</td></tr>';
+return;
+}
+tbody.innerHTML = [...data].reverse().map(o => `<tr>
+<td><strong>${o.customerName}</strong></td>
+<td>${o.productName}</td>
+<td>${o.quantity}</td>
+<td>€${parseFloat(o.totalAmount).toFixed(2)}</td>
+<td><span class="badge ${getBadge(o.status)}">${o.status}</span></td>
+<td>${new Date(o.date).toLocaleDateString('sq-AL')}</td>
+<td><div class="actions">
+<button class="btn btn-yellow" onclick="openEdit('${o.id}')">✏️</button>
+<button class="btn btn-red" onclick="deleteOrder('${o.id}')">🗑️</button>
+</div></td>
+</tr>`).join('');
+}
+
+function addOrder() {
+const customerName = document.getElementById('customerName').value.trim();
+const productName = document.getElementById('productName').value.trim();
+const quantity = document.getElementById('quantity').value;
+const totalAmount = document.getElementById('totalAmount').value;
+if (!customerName) return showMsg('formMsg', '❌ Klienti është i detyrueshëm!', 'error');
+if (!productName) return showMsg('formMsg', '❌ Produkti është i detyrueshëm!', 'error');
+if (!quantity || quantity <= 0) return showMsg('formMsg', '❌ Sasia duhet të jetë pozitive!', 'error');
+if (!totalAmount || totalAmount <= 0) return showMsg('formMsg', '❌ Totali duhet të jetë pozitiv!', 'error');
+const data = getData();
+data.push({ id: Date.now().toString(), customerName, productName, quantity, totalAmount, status: document.getElementById('status').value, date: new Date().toISOString() });
+saveData(data);
+showMsg('formMsg', '✅ Porosia u shtua!', 'success');
+['customerName','productName','quantity','totalAmount'].forEach(id => document.getElementById(id).value = '');
+render();
+}
+
+function openEdit(id) {
+const o = getData().find(x => x.id === id);
+document.getElementById('editId').value = o.id;
+document.getElementById('editCustomer').value = o.customerName;
+document.getElementById('editProduct').value = o.productName;
+document.getElementById('editQty').value = o.quantity;
+document.getElementById('editTotal').value = o.totalAmount;
+document.getElementById('editStatus').value = o.status;
+document.getElementById('overlay').classList.add('show');
+}
+
+function saveEdit() {
+const id = document.getElementById('editId').value;
+const data = getData();
+const i = data.findIndex(x => x.id === id);
+data[i] = { ...data[i], customerName: document.getElementById('editCustomer').value, productName: document.getElementById('editProduct').value, quantity: document.getElementById('editQty').value, totalAmount: document.getElementById('editTotal').value, status: document.getElementById('editStatus').value };
+saveData(data); closeModal();
+showMsg('listMsg', '✅ Porosia u përditësua!', 'success');
+render();
+}
+
+function deleteOrder(id) {
+if (!confirm('A jeni i sigurt?')) return;
+saveData(getData().filter(x => x.id !== id));
+showMsg('listMsg', '✅ Porosia u fshi!', 'success');
+render();
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('show'); }
+render();
+</script>
+</body>
+</html>

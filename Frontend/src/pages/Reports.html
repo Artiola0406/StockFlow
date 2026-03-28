@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow — Raportet</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; }
+nav { background: #2d3748; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+nav .logo { color: white; font-size: 20px; font-weight: bold; }
+nav .links { display: flex; gap: 4px; flex-wrap: wrap; }
+nav a { color: #a0aec0; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+nav a:hover { background: #4a5568; color: white; }
+nav a.active { background: #4299e1; color: white; }
+.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.stat-card .num { font-size: 22px; font-weight: 700; }
+.stat-card .lbl { font-size: 12px; color: #718096; margin-top: 4px; }
+.card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card h2 { color: #2d3748; margin-bottom: 16px; font-size: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { background: #edf2f7; padding: 10px 12px; text-align: left; color: #4a5568; }
+td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+tr:last-child td { border-bottom: none; }
+.empty { text-align: center; color: #a0aec0; padding: 20px; }
+@media (max-width: 600px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">📦 StockFlow</div>
+<div class="links">
+<a href="Dashboard.html">📊 Dashboard</a>
+<a href="Products.html">📦 Produktet</a>
+<a href="Warehouses.html">🏭 Depo</a>
+<a href="StockMovements.html">🔄 Lëvizjet</a>
+<a href="Suppliers.html">🚚 Furnitorët</a>
+<a href="Orders.html">🛒 Porositë</a>
+<a href="Customers.html">👥 Klientët</a>
+<a href="Reports.html" class="active">📈 Raportet</a>
+</div>
+</nav>
+
+<div class="container">
+<div class="stats">
+<div class="stat-card">
+<div class="num" id="totalVal" style="color:#48bb78">€0</div>
+<div class="lbl">Vlera Totale</div>
+</div>
+<div class="stat-card">
+<div class="num" id="mostExpensive" style="color:#4299e1;font-size:14px">—</div>
+<div class="lbl">Produkti më i Shtrenjtë</div>
+</div>
+<div class="stat-card">
+<div class="num" id="topCategory" style="color:#ed8936;font-size:14px">—</div>
+<div class="lbl">Kategoria Kryesore</div>
+</div>
+<div class="stat-card">
+<div class="num" id="lowStockCount" style="color:#fc8181">0</div>
+<div class="lbl">Stok i Ulët</div>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 Produktet sipas Kategorisë</h2>
+<table>
+<thead><tr><th>Kategoria</th><th>Nr. Produkteve</th><th>Vlera Totale</th></tr></thead>
+<tbody id="catTable"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>🏆 Top 5 Produktet me Vlerë më të Lartë</h2>
+<table>
+<thead><tr><th>#</th><th>Emri</th><th>Çmimi</th><th>Sasia</th><th>Vlera Totale</th></tr></thead>
+<tbody id="topTable"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>⚠️ Produktet me Stok të Ulët</h2>
+<table>
+<thead><tr><th>Emri</th><th>SKU</th><th>Sasia</th><th>Kategoria</th></tr></thead>
+<tbody id="lowTable"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+async function loadReports() {
+try {
+const res = await fetch('http://localhost:5000/api/products');
+const data = await res.json();
+const products = data.data || [];
+
+const totalVal = products.reduce((s, p) => s + parseFloat(p.price) * parseInt(p.quantity), 0);
+document.getElementById('totalVal').textContent = '€' + totalVal.toFixed(2);
+
+const expensive = products.reduce((max, p) => parseFloat(p.price) > parseFloat(max.price) ? p : max, products[0]);
+document.getElementById('mostExpensive').textContent = expensive ? expensive.name : '—';
+
+const catCount = {};
+products.forEach(p => { catCount[p.category] = (catCount[p.category] || 0) + 1; });
+const topCat = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0];
+document.getElementById('topCategory').textContent = topCat ? topCat[0] : '—';
+
+const low = products.filter(p => parseInt(p.quantity) < 5);
+document.getElementById('lowStockCount').textContent = low.length;
+
+const catVal = {};
+products.forEach(p => {
+if (!catVal[p.category]) catVal[p.category] = { count: 0, value: 0 };
+catVal[p.category].count++;
+catVal[p.category].value += parseFloat(p.price) * parseInt(p.quantity);
+});
+document.getElementById('catTable').innerHTML = Object.entries(catVal).map(([cat, v]) => `
+<tr><td><strong>${cat}</strong></td><td>${v.count}</td><td>€${v.value.toFixed(2)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Nuk ka të dhëna.</td></tr>';
+
+const top5 = [...products].sort((a, b) => (parseFloat(b.price) * parseInt(b.quantity)) - (parseFloat(a.price) * parseInt(a.quantity))).slice(0, 5);
+document.getElementById('topTable').innerHTML = top5.map((p, i) => `
+<tr><td>${i + 1}</td><td><strong>${p.name}</strong></td><td>€${parseFloat(p.price).toFixed(2)}</td><td>${p.quantity}</td><td>€${(parseFloat(p.price) * parseInt(p.quantity)).toFixed(2)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nuk ka të dhëna.</td></tr>';
+
+document.getElementById('lowTable').innerHTML = low.length === 0
+? '<tr><td colspan="4" class="empty">✅ Asnjë produkt me stok të ulët!</td></tr>'
+: low.map(p => `<tr><td><strong>${p.name}</strong></td><td>${p.sku}</td><td style="color:#e53e3e;font-weight:bold">${p.quantity}</td><td>${p.category}</td></tr>`).join('');
+
+} catch (e) {
+document.getElementById('catTable').innerHTML = '<tr><td colspan="3" class="empty">❌ Serveri nuk është aktiv!</td></tr>';
+}
+}
+loadReports();
+</script>
+</body>
+</html>
+
