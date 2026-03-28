@@ -40,8 +40,13 @@ Funksionalitetet e dukshme:
 - Listë me kërkim/filtrim në kohë reale
 - Butona ✏️ dhe 🗑️ për çdo produkt
 
-*[C:\Users\Artiola\Pictures\Screenshots\Screenshot (591).png]*  
-*[C:\Users\Artiola\Pictures\Screenshots\Screenshot (592).png]*
+### Screenshotet e Implementimit
+
+**Pamja e Dashboard-it dhe Formës:**
+![Dashboard dhe Forma](screenshots/screenshot591.png)
+
+**Lista e Produkteve me CRUD:**
+![Lista e Produkteve](screenshots/screenshot592.png)
 
 ---
 
