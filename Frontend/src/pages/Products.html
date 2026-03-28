@@ -6,70 +6,189 @@
   <title>StockFlow — Produktet</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 20px; }
-    h1 { color: #2d3748; margin-bottom: 20px; }
-    h2 { color: #4a5568; margin-bottom: 12px; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    input, select { width: 100%; padding: 8px 12px; margin-bottom: 12px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 14px; }
-    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    /* NAVBAR */
+    nav {
+      background: #2d3748; padding: 0 24px;
+      display: flex; align-items: center;
+      justify-content: space-between; height: 56px;
+    }
+    nav .logo { color: white; font-size: 20px; font-weight: bold; }
+    nav .links { display: flex; gap: 8px; }
+    nav a {
+      color: #a0aec0; text-decoration: none;
+      padding: 8px 14px; border-radius: 6px;
+      font-size: 14px; transition: all 0.2s;
+    }
+    nav a:hover { background: #4a5568; color: white; }
+    nav a.active { background: #4299e1; color: white; }
+
+    /* LAYOUT */
+    .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    h2 { color: #2d3748; margin-bottom: 16px; font-size: 18px; }
+
+    /* CARDS */
+    .card {
+      background: white; border-radius: 10px;
+      padding: 20px; margin-bottom: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    /* FORM */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    input {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid #cbd5e0; border-radius: 6px;
+      font-size: 14px; outline: none;
+    }
+    input:focus { border-color: #4299e1; }
+    label { display: block; font-size: 13px; color: #4a5568; margin-bottom: 4px; }
+
+    /* BUTTONS */
+    .btn {
+      padding: 9px 18px; border: none;
+      border-radius: 6px; cursor: pointer;
+      font-size: 14px; font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
     .btn-blue { background: #4299e1; color: white; width: 100%; margin-top: 4px; }
-    .btn-blue:hover { background: #3182ce; }
-    .btn-yellow { background: #ecc94b; color: #744210; padding: 6px 12px; font-size: 12px; }
-    .btn-red { background: #fc8181; color: #742a2a; padding: 6px 12px; font-size: 12px; }
-    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-    .search-bar input { margin: 0; }
-    .search-bar .btn { width: auto; white-space: nowrap; }
+    .btn-yellow { background: #f6c90e; color: #744210; padding: 5px 12px; font-size: 12px; }
+    .btn-red { background: #fc8181; color: #742a2a; padding: 5px 12px; font-size: 12px; }
+    .btn-gray { background: #e2e8f0; color: #4a5568; }
+
+    /* SEARCH */
+    .search-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .search-row input { margin: 0; }
+    .search-row .btn { width: auto; white-space: nowrap; }
+
+    /* TABLE */
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { background: #edf2f7; padding: 10px; text-align: left; }
-    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
-    tr:hover { background: #f7fafc; }
-    .msg { padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
+    th { background: #edf2f7; padding: 10px 12px; text-align: left; color: #4a5568; }
+    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #2d3748; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7fafc; }
+    .actions { display: flex; gap: 6px; }
+
+    /* MESSAGES */
+    .msg {
+      padding: 10px 14px; border-radius: 6px;
+      margin-bottom: 12px; font-size: 14px;
+      display: none;
+    }
+    .msg.show { display: block; }
     .success { background: #c6f6d5; color: #276749; }
     .error { background: #fed7d7; color: #742a2a; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
-    .modal.active { display: flex; }
-    .modal-content { background: white; padding: 24px; border-radius: 8px; width: 100%; max-width: 400px; }
-    .modal-content h2 { margin-bottom: 16px; }
-    .modal-buttons { display: flex; gap: 8px; margin-top: 8px; }
-    .modal-buttons .btn { flex: 1; }
-    .btn-gray { background: #e2e8f0; color: #4a5568; }
+
+    /* MODAL */
+    .overlay {
+      display: none; position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+      background: white; border-radius: 10px;
+      padding: 24px; width: 100%; max-width: 420px;
+    }
+    .modal h2 { margin-bottom: 16px; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 12px; }
+    .modal-btns .btn { flex: 1; }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .stat-card .num { font-size: 28px; font-weight: 700; color: #4299e1; }
+    .stat-card .lbl { font-size: 13px; color: #718096; margin-top: 4px; }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      nav .links a span { display: none; }
+    }
   </style>
 </head>
 <body>
-<div class="container">
-  <h1>📦 StockFlow — Menaxhimi i Produkteve</h1>
 
-  <!-- FORMA E SHTIMIT -->
+<!-- NAVBAR -->
+<nav>
+  <div class="logo">📦 StockFlow</div>
+  <div class="links">
+    <a href="#" class="active">📦 <span>Produktet</span></a>
+    <a href="#">🏭 <span>Depo</span></a>
+    <a href="#">🛒 <span>Porositë</span></a>
+    <a href="#">📊 <span>Raportet</span></a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="totalProducts">0</div>
+      <div class="lbl">Produkte Gjithsej</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="totalValue" style="color:#48bb78">€0</div>
+      <div class="lbl">Vlera Totale</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="lowStock" style="color:#fc8181">0</div>
+      <div class="lbl">Stok i Ulët (&lt;5)</div>
+    </div>
+  </div>
+
+  <!-- FORMA SHTIMIT -->
   <div class="card">
     <h2>➕ Shto Produkt të Ri</h2>
-    <div id="formMsg"></div>
-    <input type="text" id="name" placeholder="Emri i produktit *">
-    <input type="text" id="sku" placeholder="SKU (p.sh. SKU-006) *">
-    <input type="number" id="price" placeholder="Çmimi në € *" min="0" step="0.01">
-    <input type="number" id="quantity" placeholder="Sasia *" min="0">
-    <input type="text" id="category" placeholder="Kategoria">
+    <div class="msg" id="formMsg"></div>
+    <div class="form-grid">
+      <div>
+        <label>Emri *</label>
+        <input type="text" id="name" placeholder="Emri i produktit">
+      </div>
+      <div>
+        <label>SKU *</label>
+        <input type="text" id="sku" placeholder="SKU-006">
+      </div>
+      <div>
+        <label>Çmimi (€) *</label>
+        <input type="number" id="price" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div>
+        <label>Sasia *</label>
+        <input type="number" id="quantity" placeholder="0" min="0">
+      </div>
+      <div class="full">
+        <label>Kategoria</label>
+        <input type="text" id="category" placeholder="Elektronikë, Mobilje...">
+      </div>
+    </div>
     <button class="btn btn-blue" onclick="addProduct()">✅ Shto Produktin</button>
   </div>
 
-  <!-- LISTA E PRODUKTEVE -->
+  <!-- LISTA -->
   <div class="card">
     <h2>📋 Lista e Produkteve</h2>
-    <div class="search-bar">
+    <div class="search-row">
       <input type="text" id="searchInput" placeholder="Kërko sipas emrit ose kategorisë...">
-      <button class="btn btn-blue" onclick="loadProducts()">🔍 Kërko</button>
-      <button class="btn btn-gray" onclick="clearSearch()">✖ Pastro</button>
+      <button class="btn btn-blue" style="width:auto" onclick="loadProducts()">🔍 Kërko</button>
+      <button class="btn btn-gray" onclick="clearSearch()">✖</button>
     </div>
-    <div id="listMsg"></div>
+    <div class="msg" id="listMsg"></div>
     <table>
       <thead>
         <tr>
-          <th>Emri</th>
-          <th>SKU</th>
-          <th>Çmimi</th>
-          <th>Sasia</th>
-          <th>Kategoria</th>
-          <th>Veprimet</th>
+          <th>Emri</th><th>SKU</th><th>Çmimi</th>
+          <th>Sasia</th><th>Kategoria</th><th>Veprimet</th>
         </tr>
       </thead>
       <tbody id="productList"></tbody>
@@ -77,18 +196,23 @@
   </div>
 </div>
 
-<!-- MODAL PËR UPDATE -->
-<div class="modal" id="editModal">
-  <div class="modal-content">
+<!-- MODAL UPDATE -->
+<div class="overlay" id="overlay">
+  <div class="modal">
     <h2>✏️ Përditëso Produktin</h2>
     <input type="hidden" id="editId">
-    <input type="text" id="editName" placeholder="Emri">
-    <input type="text" id="editSku" placeholder="SKU">
-    <input type="number" id="editPrice" placeholder="Çmimi" min="0" step="0.01">
-    <input type="number" id="editQuantity" placeholder="Sasia" min="0">
-    <input type="text" id="editCategory" placeholder="Kategoria">
-    <div id="editMsg"></div>
-    <div class="modal-buttons">
+    <label>Emri</label>
+    <input type="text" id="editName" style="margin-bottom:10px">
+    <label>SKU</label>
+    <input type="text" id="editSku" style="margin-bottom:10px">
+    <label>Çmimi (€)</label>
+    <input type="number" id="editPrice" style="margin-bottom:10px">
+    <label>Sasia</label>
+    <input type="number" id="editQuantity" style="margin-bottom:10px">
+    <label>Kategoria</label>
+    <input type="text" id="editCategory" style="margin-bottom:10px">
+    <div class="msg" id="editMsg"></div>
+    <div class="modal-btns">
       <button class="btn btn-blue" onclick="saveUpdate()">💾 Ruaj</button>
       <button class="btn btn-gray" onclick="closeModal()">✖ Anulo</button>
     </div>
@@ -100,39 +224,51 @@
 
   function showMsg(id, text, type) {
     const el = document.getElementById(id);
-    el.className = 'msg ' + type;
     el.textContent = text;
-    setTimeout(() => el.textContent = '', 3000);
+    el.className = 'msg ' + type + ' show';
+    setTimeout(() => { el.className = 'msg'; el.textContent = ''; }, 3000);
   }
 
   async function loadProducts() {
     const filter = document.getElementById('searchInput').value;
-    const url = filter ? `${API}?filter=${filter}` : API;
+    const url = filter ? `${API}?filter=${encodeURIComponent(filter)}` : API;
     try {
       const res = await fetch(url);
       const data = await res.json();
-      const tbody = document.getElementById('productList');
-      tbody.innerHTML = '';
-      if (!data.data || data.data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Nuk ka produkte.</td></tr>';
-        return;
-      }
-      data.data.forEach(p => {
-        tbody.innerHTML += `<tr>
-          <td>${p.name}</td>
-          <td>${p.sku}</td>
-          <td>€${parseFloat(p.price).toFixed(2)}</td>
-          <td>${p.quantity}</td>
-          <td>${p.category}</td>
-          <td>
-            <button class="btn btn-yellow" onclick="openEdit('${p.id}','${p.name}','${p.sku}','${p.price}','${p.quantity}','${p.category}')">✏️ Ndrysho</button>
-            <button class="btn btn-red" onclick="deleteProduct('${p.id}','${p.name}')">🗑️ Fshi</button>
-          </td>
-        </tr>`;
-      });
+      renderTable(data.data || []);
+      updateStats(data.data || []);
     } catch (e) {
-      showMsg('listMsg', '❌ Serveri nuk është aktiv. Starto: node src/app.js', 'error');
+      showMsg('listMsg', '❌ Serveri nuk është aktiv! Hap terminalin dhe shkruaj: node src/app.js', 'error');
     }
+  }
+
+  function renderTable(products) {
+    const tbody = document.getElementById('productList');
+    if (products.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:20px">Nuk ka produkte.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = products.map(p => `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td><code>${p.sku}</code></td>
+        <td>€${parseFloat(p.price).toFixed(2)}</td>
+        <td style="color:${parseInt(p.quantity)<5?'#e53e3e':'#2d3748'};font-weight:${parseInt(p.quantity)<5?'bold':'normal'}">${p.quantity}</td>
+        <td>${p.category}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-yellow" onclick="openEdit('${p.id}','${p.name}','${p.sku}','${p.price}','${p.quantity}','${p.category}')">✏️</button>
+            <button class="btn btn-red" onclick="deleteProduct('${p.id}','${p.name}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function updateStats(products) {
+    document.getElementById('totalProducts').textContent = products.length;
+    const val = products.reduce((s, p) => s + parseFloat(p.price) * parseInt(p.quantity), 0);
+    document.getElementById('totalValue').textContent = '€' + val.toFixed(2);
+    document.getElementById('lowStock').textContent = products.filter(p => parseInt(p.quantity) < 5).length;
   }
 
   async function addProduct() {
@@ -168,12 +304,11 @@
     document.getElementById('editPrice').value = price;
     document.getElementById('editQuantity').value = quantity;
     document.getElementById('editCategory').value = category;
-    document.getElementById('editModal').classList.add('active');
+    document.getElementById('overlay').classList.add('show');
   }
 
   function closeModal() {
-    document.getElementById('editModal').classList.remove('active');
-    document.getElementById('editMsg').textContent = '';
+    document.getElementById('overlay').classList.remove('show');
   }
 
   async function saveUpdate() {
@@ -196,11 +331,10 @@
         showMsg('listMsg', '✅ Produkti u përditësua!', 'success');
         loadProducts();
       } else {
-        document.getElementById('editMsg').textContent = '❌ ' + data.message;
-        document.getElementById('editMsg').className = 'msg error';
+        showMsg('editMsg', '❌ ' + data.message, 'error');
       }
     } catch (e) {
-      document.getElementById('editMsg').textContent = '❌ Gabim!';
+      showMsg('editMsg', '❌ Gabim!', 'error');
     }
   }
 

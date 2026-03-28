@@ -1,5 +1,5 @@
 id,name,sku,price,quantity,category,createdAt
-1,Laptop Dell XPS,SKU-001,999.99,15,Elektronikë,2026-01-01T10:00:00.000Z
+1,Laptop Dell XPS,SKU-001,899.99,15,Elektronikë,2026-01-01T10:00:00.000Z
 2,Monitor Samsung 27,SKU-002,349.99,8,Elektronikë,2026-01-02T10:00:00.000Z
 3,Tastierë Logitech,SKU-003,79.99,25,Aksesore,2026-01-03T10:00:00.000Z
 4,Karrige Zyreje,SKU-004,249.99,10,Mobilje,2026-01-04T10:00:00.000Z
