@@ -1,46 +1,75 @@
-# StockFlow — Dokumentimi i Implementimit
+# StockFlow — Dokumentimi i Detyrës Praktike 2
 
-## Çfarë u implementua
+**Lënda:** Inxhinieri Softuerike  
+**Studenti:** Artiola Qollaku  
+**Universiteti:** Universiteti "Isa Boletini" — Mitrovicë  
+**GitHub:** https://github.com/Artiola0406/StockFlow
 
-### 1. Model — Product.js
-Klasa `Product` me 7 atribute: `id`, `name`, `sku`, `price`, `quantity`, `category`, `createdAt`.
+---
 
-### 2. Repository — CRUD i plotë
-- `IRepository.js` — interface abstrakt me 6 metoda
-- `FileRepository.js` — implementim me CSV, të gjitha operacionet CRUD
-- `ProductRepository.js` — specifik për produkte me `getByCategory()` dhe `getLowStock()`
-- `Backend/data/products.csv` — 5 rekorde fillestare
+## Ushtrimi 1 — Model + Repository 
 
-### 3. Service — ProductService.js
-3 metoda kryesore me validim:
-- `getAllProducts(filter)` — liston me filtrim opsional
-- `addProduct(data)` — shton me validim (emri, SKU, çmimi > 0, sasia >= 0)
-- `getProductById(id)` — gjen sipas ID
-- `updateProduct(id, data)` — përditëson me validim
-- `deleteProduct(id)` — fshin pas verifikimit
+Modeli `Product` implementohet në `Backend/src/models/Product.js` me 7 atribute: `id`, `name`, `sku`, `category`, `quantity`, `minStock`, `price`.
 
-Service merr Repository si parameter (Dependency Injection).
+`FileRepository` në `Backend/src/repositories/FileRepository.js` implementon ndërfaqen `IRepository` me metodat e plota CRUD: `getAll()`, `getById(id)`, `add(entity)`, `save()`. Të dhënat ruhen dhe lexohen nga `Backend/data/products.csv`.
 
-### 4. UI — Products.html
-Forma e plotë me:
-- ➕ Shtim produkti me validim
-- 📋 Listim me kërkim/filtrim
-- ✏️ Përditësim në modal
-- 🗑️ Fshirje me konfirmim
+Skedari CSV përmban 5 rekorde fillestare: Laptop Dell XPS, Monitor Samsung 27, Tastierë Logitech, Karrige Zyreje, Printer HP LaserJet.
 
-### 5. Rrjedha e plotë
+---
+
+## Ushtrimi 2 — Service me Logjikë 
+
+`ProductService` në `Backend/src/services/ProductService.js` merr `repository` si parameter — Dependency Injection.
+
+3 metodat e implementuara:
+- `getAllProducts(filter)` — liston produktet me filtrim sipas emrit ose kategorisë
+- `addProduct(data)` — shton produkt me validim: emri jo bosh, çmimi > 0, sasia ≥ 0
+- `getProductById(id)` — kthen produktin ose hedh Error nëse nuk ekziston
+
+---
+
+## Ushtrimi 3 — UI Funksionale 
+
+Faqja `Frontend/src/pages/Products.html` lidhet me backend-in përmes API Express.
+
+Rrjedha: **UI → productRoutes.js → ProductService → FileRepository → products.csv**
+
+Funksionalitetet e dukshme:
+- 3 karta statistikash (Gjithsej produkte, Vlera totale, Stok i ulët)
+- Formë shtimi me SKU auto-increment
+- Listë me kërkim/filtrim në kohë reale
+- Butona ✏️ dhe 🗑️ për çdo produkt
+
+*[C:\Users\Artiola\Pictures\Screenshots\Screenshot (591).png]*  
+*[C:\Users\Artiola\Pictures\Screenshots\Screenshot (592).png]*
+
+---
+
+## Ushtrimi 4 — Dokumentim 
+
+Struktura e projektit është e organizuar sipas shtresave:
 ```
-UI (Products.html)
-  → fetch() HTTP Request
-  → productRoutes.js (Express)
-  → ProductService.js (validim + logjikë)
-  → ProductRepository.js
-  → FileRepository.js
-  → products.csv (ruajtja e të dhënave)
+Backend/src/models/       → Product.js  
+Backend/src/repositories/ → IRepository.js, FileRepository.js, ProductRepository.js  
+Backend/src/services/     → ProductService.js  
+Backend/src/routes/       → productRoutes.js  
+Backend/data/             → products.csv  
+Frontend/src/pages/       → Products.html  
+Docs/                     → implementation.md, architecture.md, class-diagram.md
 ```
 
-### 6. Update + Delete
-Implementuar në të tre shtresat:
-- **Repository**: `update()` dhe `delete()` në `FileRepository.js`
-- **Service**: `updateProduct()` dhe `deleteProduct()` me validim
-- **UI**: Modal për update, buton fshirje me konfirmim
+Serveri starton me `node src/app.js` nga folderi `Backend` dhe shërben frontend-in statikisht në `http://localhost:5000/Products.html`.
+
+Kodi i plotë, historia e commit-eve dhe të gjitha skedarët janë të disponueshëm në:  
+**https://github.com/Artiola0406/StockFlow**
+
+---
+
+## Bonus — Update + Delete 
+
+`update(id, data)` dhe `delete(id)` janë implementuar në `FileRepository`, `ProductService`, dhe UI.
+
+- **Update:** butoni ✏️ hap modal me fushat e parapopulluara → ruajtja dërgon `PUT /api/products/:id` → CSV përditësohet
+- **Delete:** butoni 🗑️ kërkon konfirmim → dërgon `DELETE /api/products/:id` → rekordi hiqet nga CSV
+
+Të dyja veprimet reflektohen menjëherë në UI pa reload.
