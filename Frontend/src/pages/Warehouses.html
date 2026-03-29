@@ -1,197 +1,134 @@
 <!DOCTYPE html>
-<html lang="sq">
+<html lang="sq" class="">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockFlow — Depo</title>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; background: #f0f4f8; }
-nav { background: #2d3748; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
-nav .logo { color: white; font-size: 20px; font-weight: bold; }
-nav .links { display: flex; gap: 4px; flex-wrap: wrap; }
-nav a { color: #a0aec0; text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 13px; }
-nav a:hover { background: #4a5568; color: white; }
-nav a.active { background: #4299e1; color: white; }
-.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
-.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-.stat-card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.stat-card .num { font-size: 28px; font-weight: 700; }
-.stat-card .lbl { font-size: 13px; color: #718096; margin-top: 4px; }
-.card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.card h2 { color: #2d3748; margin-bottom: 16px; font-size: 16px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-grid .full { grid-column: 1 / -1; }
-label { display: block; font-size: 13px; color: #4a5568; margin-bottom: 4px; }
-input[type="text"], input[type="number"], input[type="email"] { width: 100%; padding: 9px 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
-input:focus { outline: none; border-color: #4299e1; }
-.checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-.btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
-.btn-blue { background: #4299e1; color: white; width: 100%; margin-top: 12px; }
-.btn-yellow { background: #f6c90e; color: #744210; padding: 5px 12px; font-size: 12px; }
-.btn-red { background: #fc8181; color: #742a2a; padding: 5px 12px; font-size: 12px; }
-.btn-gray { background: #e2e8f0; color: #4a5568; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th { background: #edf2f7; padding: 10px 12px; text-align: left; color: #4a5568; }
-td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
-tr:last-child td { border-bottom: none; }
-.badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-.badge-green { background: #c6f6d5; color: #276749; }
-.badge-gray { background: #e2e8f0; color: #4a5568; }
-.msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 14px; display: none; }
-.msg.show { display: block; }
-.success { background: #c6f6d5; color: #276749; }
-.error { background: #fed7d7; color: #742a2a; }
-.overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
-.overlay.show { display: flex; }
-.modal { background: white; border-radius: 10px; padding: 24px; width: 100%; max-width: 420px; }
-.modal h2 { margin-bottom: 16px; }
-.modal-btns { display: flex; gap: 8px; margin-top: 12px; }
-.modal-btns .btn { flex: 1; }
-.actions { display: flex; gap: 6px; }
-@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow — Lëvizjet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body>
-<nav>
-<div class="logo">📦 StockFlow</div>
-<div class="links">
-<a href="Dashboard.html">📊 Dashboard</a>
-<a href="Products.html">📦 Produktet</a>
-<a href="Warehouses.html" class="active">🏭 Depo</a>
-<a href="StockMovements.html">🔄 Lëvizjet</a>
-<a href="Suppliers.html">🚚 Furnitorët</a>
-<a href="Orders.html">🛒 Porositë</a>
-<a href="Customers.html">👥 Klientët</a>
-<a href="Reports.html">📈 Raportet</a>
-</div>
-</nav>
+<body class="bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
+  <div id="navbar-container"></div>
+  <main class="lg:ml-64 pt-16 lg:pt-0 p-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-6 pt-2">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Lëvizjet e Stokut</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Regjistro hyrjet dhe daljet e mallrave</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-blue-500" id="stat-total">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Lëvizje</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-green-500" id="stat-in">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Hyrje (IN)</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-red-500" id="stat-out">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Dalje (OUT)</div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 mb-6">
+        <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">➕ Regjistro Lëvizje</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Produkti *</label>
+            <input id="f-product" type="text" placeholder="Laptop Dell XPS" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Depoja *</label>
+            <input id="f-warehouse" type="text" placeholder="Depo Qendrore" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Lloji *</label>
+            <select id="f-type" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="IN">📥 IN — Hyrje</option>
+              <option value="OUT">📤 OUT — Dalje</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Sasia *</label>
+            <input id="f-quantity" type="number" placeholder="10" min="1" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Arsyeja</label>
+            <input id="f-reason" type="text" placeholder="Blerje nga furnitori..." class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+        <button onclick="addMovement()" class="mt-4 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors">✅ Regjistro</button>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">🔄 Historia e Lëvizjeve</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <th class="pb-3 font-medium">Produkti</th>
+                <th class="pb-3 font-medium">Depoja</th>
+                <th class="pb-3 font-medium">Lloji</th>
+                <th class="pb-3 font-medium">Sasia</th>
+                <th class="pb-3 font-medium">Arsyeja</th>
+                <th class="pb-3 font-medium">Data</th>
+                <th class="pb-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody id="movBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
 
-<div class="container">
-<div class="stats">
-<div class="stat-card">
-<div class="num" id="totalWH" style="color:#4299e1">0</div>
-<div class="lbl">Total Depo</div>
-</div>
-<div class="stat-card">
-<div class="num" id="activeWH" style="color:#48bb78">0</div>
-<div class="lbl">Depo Aktive</div>
-</div>
-</div>
+  <script src="app.js"></script>
+  <script src="navbar.js"></script>
+  <script>
+    renderNavbar('stockmovements');
+    const KEY = 'movements';
 
-<div class="card">
-<h2>➕ Shto Depo të Re</h2>
-<div class="msg" id="formMsg"></div>
-<div class="form-grid">
-<div><label>Emri *</label><input type="text" id="name" placeholder="Depo Qendrore"></div>
-<div><label>Lokacioni *</label><input type="text" id="location" placeholder="Prishtinë"></div>
-<div><label>Kapaciteti</label><input type="number" id="capacity" placeholder="1000" min="0"></div>
-<div><label>Statusi</label><div class="checkbox-row"><input type="checkbox" id="isActive" checked><span>Aktive</span></div></div>
-</div>
-<button class="btn btn-blue" onclick="addWarehouse()">✅ Shto Depon</button>
-</div>
+    function render() {
+      const data = lsGet(KEY);
+      document.getElementById('stat-total').textContent = data.length;
+      document.getElementById('stat-in').textContent = data.filter(m => m.type === 'IN').length;
+      document.getElementById('stat-out').textContent = data.filter(m => m.type === 'OUT').length;
+      const tbody = document.getElementById('movBody');
+      if (data.length === 0) { showEmpty('movBody', 'Nuk ka lëvizje të regjistruara.'); return; }
+      tbody.innerHTML = [...data].reverse().map(m => `
+        <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+          <td class="py-3 font-medium text-gray-800 dark:text-gray-200">${m.productName}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">${m.warehouseName}</td>
+          <td class="py-3"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${m.type === 'IN' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}">${m.type}</span></td>
+          <td class="py-3 font-medium text-gray-800 dark:text-gray-200">${m.quantity}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">${m.reason || '—'}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">${formatDate(m.date)}</td>
+          <td class="py-3"><button onclick="deleteMov('${m.id}')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">🗑️</button></td>
+        </tr>`).join('');
+    }
 
-<div class="card">
-<h2>🏭 Lista e Depove</h2>
-<div class="msg" id="listMsg"></div>
-<table>
-<thead><tr><th>Emri</th><th>Lokacioni</th><th>Kapaciteti</th><th>Statusi</th><th>Veprimet</th></tr></thead>
-<tbody id="whList"></tbody>
-</table>
-</div>
-</div>
+    function addMovement() {
+      const productName = document.getElementById('f-product').value.trim();
+      const warehouseName = document.getElementById('f-warehouse').value.trim();
+      const quantity = document.getElementById('f-quantity').value;
+      if (!productName) return showToast('Emri i produktit është i detyrueshëm!', 'error');
+      if (!warehouseName) return showToast('Emri i deposes është i detyrueshëm!', 'error');
+      if (!quantity || parseInt(quantity) <= 0) return showToast('Sasia duhet të jetë pozitive!', 'error');
+      const data = lsGet(KEY);
+      data.push({ id: Date.now().toString(), productName, warehouseName, type: document.getElementById('f-type').value, quantity, reason: document.getElementById('f-reason').value, date: new Date().toISOString() });
+      lsSet(KEY, data);
+      showToast('✅ Lëvizja u regjistrua!', 'success');
+      ['f-product','f-warehouse','f-quantity','f-reason'].forEach(id => document.getElementById(id).value = '');
+      render();
+    }
 
-<div class="overlay" id="overlay">
-<div class="modal">
-<h2>✏️ Ndrysho Depon</h2>
-<input type="hidden" id="editId">
-<label>Emri</label><input type="text" id="editName" style="margin-bottom:10px">
-<label>Lokacioni</label><input type="text" id="editLocation" style="margin-bottom:10px">
-<label>Kapaciteti</label><input type="number" id="editCapacity" style="margin-bottom:10px">
-<div class="checkbox-row" style="margin-bottom:10px"><input type="checkbox" id="editIsActive"><span>Aktive</span></div>
-<div class="modal-btns">
-<button class="btn btn-blue" onclick="saveEdit()">💾 Ruaj</button>
-<button class="btn btn-gray" onclick="closeModal()">✖ Anulo</button>
-</div>
-</div>
-</div>
+    function deleteMov(id) {
+      confirmDelete('A jeni i sigurt?', () => {
+        lsSet(KEY, lsGet(KEY).filter(x => x.id !== id));
+        showToast('✅ Lëvizja u fshi!', 'success');
+        render();
+      });
+    }
 
-<script>
-const KEY = 'warehouses';
-function getData() { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
-function saveData(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
-
-function showMsg(id, text, type) {
-const el = document.getElementById(id);
-el.textContent = text; el.className = 'msg ' + type + ' show';
-setTimeout(() => { el.className = 'msg'; }, 3000);
-}
-
-function render() {
-const data = getData();
-document.getElementById('totalWH').textContent = data.length;
-document.getElementById('activeWH').textContent = data.filter(w => w.isActive).length;
-const tbody = document.getElementById('whList');
-if (data.length === 0) {
-tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:20px">Nuk ka depo.</td></tr>';
-return;
-}
-tbody.innerHTML = data.map(w => `<tr>
-<td><strong>${w.name}</strong></td>
-<td>${w.location}</td>
-<td>${w.capacity || '—'}</td>
-<td><span class="badge ${w.isActive ? 'badge-green' : 'badge-gray'}">${w.isActive ? 'Aktive' : 'Joaktive'}</span></td>
-<td><div class="actions">
-<button class="btn btn-yellow" onclick="openEdit('${w.id}')">✏️</button>
-<button class="btn btn-red" onclick="deleteWH('${w.id}')">🗑️</button>
-</div></td>
-</tr>`).join('');
-}
-
-function addWarehouse() {
-const name = document.getElementById('name').value.trim();
-const location = document.getElementById('location').value.trim();
-if (!name) return showMsg('formMsg', '❌ Emri është i detyrueshëm!', 'error');
-if (!location) return showMsg('formMsg', '❌ Lokacioni është i detyrueshëm!', 'error');
-const data = getData();
-data.push({ id: Date.now().toString(), name, location, capacity: document.getElementById('capacity').value || 0, isActive: document.getElementById('isActive').checked });
-saveData(data);
-showMsg('formMsg', '✅ Depoja u shtua!', 'success');
-['name','location','capacity'].forEach(id => document.getElementById(id).value = '');
-document.getElementById('isActive').checked = true;
-render();
-}
-
-function openEdit(id) {
-const w = getData().find(x => x.id === id);
-document.getElementById('editId').value = w.id;
-document.getElementById('editName').value = w.name;
-document.getElementById('editLocation').value = w.location;
-document.getElementById('editCapacity').value = w.capacity;
-document.getElementById('editIsActive').checked = w.isActive;
-document.getElementById('overlay').classList.add('show');
-}
-
-function saveEdit() {
-const id = document.getElementById('editId').value;
-const data = getData();
-const i = data.findIndex(x => x.id === id);
-data[i] = { ...data[i], name: document.getElementById('editName').value, location: document.getElementById('editLocation').value, capacity: document.getElementById('editCapacity').value, isActive: document.getElementById('editIsActive').checked };
-saveData(data);
-closeModal();
-showMsg('listMsg', '✅ Depoja u përditësua!', 'success');
-render();
-}
-
-function deleteWH(id) {
-if (!confirm('A jeni i sigurt?')) return;
-saveData(getData().filter(x => x.id !== id));
-showMsg('listMsg', '✅ Depoja u fshi!', 'success');
-render();
-}
-
-function closeModal() { document.getElementById('overlay').classList.remove('show'); }
-render();
-</script>
+    render();
+  </script>
 </body>
 </html>
