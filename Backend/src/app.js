@@ -7,25 +7,11 @@ const app = express();
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-
-const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
-app.use(express.static(pagesPath));
-
+app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/products', productRoutes);
 
-const pages = ['dashboard', 'products', 'warehouses', 'stockmovements', 'suppliers', 'orders', 'customers', 'reports'];
-
-pages.forEach(page => {
-  app.get(`/${page}`, (req, res) => {
-    res.sendFile(path.join(pagesPath, `${page}.html`));
-  });
-  app.get(`/${page}.html`, (req, res) => {
-    res.sendFile(path.join(pagesPath, `${page}.html`));
-  });
-});
-
 app.get('/', (req, res) => {
-  res.sendFile(path.join(pagesPath, 'dashboard.html'));
+  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
 });
 
 const PORT = process.env.PORT || 5000;

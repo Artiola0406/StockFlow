@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="sq" class="">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow — Raportet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
+  <div id="navbar-container"></div>
+  <main class="lg:ml-64 pt-16 lg:pt-0 p-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-6 pt-2">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Raportet</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Analitika dhe raporte të inventarit</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-green-500" id="stat-value">—</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Vlera Totale</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-lg font-bold text-blue-500 truncate" id="stat-expensive">—</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Produkti më i Shtrenjtë</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-lg font-bold text-purple-500 truncate" id="stat-topcategory">—</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Kategoria Kryesore</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-red-500" id="stat-low">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Stok i Ulët</div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">📊 Produktet sipas Kategorisë</h2>
+          <canvas id="catChart" height="220"></canvas>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">💰 Top 5 — Vlera më e Lartë</h2>
+          <canvas id="topChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- Tables Row -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">📋 Produktet sipas Kategorisë</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                  <th class="pb-3 font-medium">Kategoria</th>
+                  <th class="pb-3 font-medium">Nr.</th>
+                  <th class="pb-3 font-medium">Vlera</th>
+                </tr>
+              </thead>
+              <tbody id="catTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">⚠️ Stok i Ulët</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                  <th class="pb-3 font-medium">Emri</th>
+                  <th class="pb-3 font-medium">SKU</th>
+                  <th class="pb-3 font-medium">Sasia</th>
+                  <th class="pb-3 font-medium">Kategoria</th>
+                </tr>
+              </thead>
+              <tbody id="lowTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 5 Table -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 mt-5">
+        <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">🏆 Top 5 Produktet me Vlerë më të Lartë</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                <th class="pb-3 font-medium">#</th>
+                <th class="pb-3 font-medium">Emri</th>
+                <th class="pb-3 font-medium">Çmimi</th>
+                <th class="pb-3 font-medium">Sasia</th>
+                <th class="pb-3 font-medium">Vlera Totale</th>
+              </tr>
+            </thead>
+            <tbody id="topTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="navbar.js"></script>
+  <script>
+    renderNavbar('reports');
+    let catChartInst = null;
+    let topChartInst = null;
+
+    async function loadReports() {
+      try {
+        const res = await apiGet('/products');
+        const products = res.data || [];
+
+        const totalVal = products.reduce((s, p) => s + parseFloat(p.price) * parseInt(p.quantity), 0);
+        document.getElementById('stat-value').textContent = formatCurrency(totalVal);
+
+        const expensive = products.reduce((max, p) => parseFloat(p.price) > parseFloat(max?.price || 0) ? p : max, null);
+        document.getElementById('stat-expensive').textContent = expensive ? expensive.name : '—';
+
+        const catCount = {};
+        products.forEach(p => { catCount[p.category] = (catCount[p.category] || 0) + 1; });
+        const topCat = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0];
+        document.getElementById('stat-topcategory').textContent = topCat ? topCat[0] : '—';
+
+        const low = products.filter(p => parseInt(p.quantity) < 5);
+        document.getElementById('stat-low').textContent = low.length;
+
+        // Category chart
+        const catVal = {};
+        products.forEach(p => {
+          if (!catVal[p.category]) catVal[p.category] = { count: 0, value: 0 };
+          catVal[p.category].count++;
+          catVal[p.category].value += parseFloat(p.price) * parseInt(p.quantity);
+        });
+
+        if (catChartInst) catChartInst.destroy();
+        catChartInst = new Chart(document.getElementById('catChart'), {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(catVal),
+            datasets: [{ data: Object.values(catVal).map(v => v.count), backgroundColor: ['#3B82F6','#10B981','#8B5CF6','#F59E0B','#EF4444','#06B6D4'], borderWidth: 0 }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#6B7280', font: { size: 11 } } } } }
+        });
+
+        // Top 5 chart
+        const top5 = [...products].sort((a, b) => (parseFloat(b.price) * parseInt(b.quantity)) - (parseFloat(a.price) * parseInt(a.quantity))).slice(0, 5);
+        if (topChartInst) topChartInst.destroy();
+        topChartInst = new Chart(document.getElementById('topChart'), {
+          type: 'bar',
+          data: {
+            labels: top5.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+            datasets: [{ label: 'Vlera (€)', data: top5.map(p => parseFloat(p.price) * parseInt(p.quantity)), backgroundColor: '#3B82F6', borderRadius: 8 }]
+          },
+          options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#6B7280' } }, x: { ticks: { color: '#6B7280' } } } }
+        });
+
+        // Category table
+        document.getElementById('catTable').innerHTML = Object.entries(catVal).map(([cat, v]) => `
+          <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0">
+            <td class="py-2.5 font-medium text-gray-800 dark:text-gray-200">${cat}</td>
+            <td class="py-2.5 text-gray-500 dark:text-gray-400">${v.count}</td>
+            <td class="py-2.5 font-medium text-green-600 dark:text-green-400">${formatCurrency(v.value)}</td>
+          </tr>`).join('') || '<tr><td colspan="3" class="py-4 text-center text-gray-400">Nuk ka të dhëna.</td></tr>';
+
+        // Low stock table
+        document.getElementById('lowTable').innerHTML = low.length === 0
+          ? '<tr><td colspan="4" class="py-4 text-center text-green-500 font-medium">✅ Asnjë produkt me stok të ulët!</td></tr>'
+          : low.map(p => `
+            <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0">
+              <td class="py-2.5 font-medium text-gray-800 dark:text-gray-200">${p.name}</td>
+              <td class="py-2.5 text-gray-500 dark:text-gray-400">${p.sku}</td>
+              <td class="py-2.5"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">${p.quantity}</span></td>
+              <td class="py-2.5 text-gray-500 dark:text-gray-400">${p.category}</td>
+            </tr>`).join('');
+
+        // Top 5 table
+        document.getElementById('topTable').innerHTML = top5.map((p, i) => `
+          <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0">
+            <td class="py-2.5"><span class="w-6 h-6 rounded-full ${i === 0 ? 'bg-yellow-100 text-yellow-600' : i === 1 ? 'bg-gray-100 text-gray-600' : 'bg-orange-50 text-orange-500'} inline-flex items-center justify-center text-xs font-bold">${i+1}</span></td>
+            <td class="py-2.5 font-medium text-gray-800 dark:text-gray-200">${p.name}</td>
+            <td class="py-2.5 text-gray-500 dark:text-gray-400">${formatCurrency(p.price)}</td>
+            <td class="py-2.5 text-gray-500 dark:text-gray-400">${p.quantity}</td>
+            <td class="py-2.5 font-bold text-green-600 dark:text-green-400">${formatCurrency(parseFloat(p.price) * parseInt(p.quantity))}</td>
+          </tr>`).join('');
+
+      } catch (e) {
+        document.getElementById('catTable').innerHTML = '<tr><td colspan="3" class="py-4 text-center text-red-500">❌ Serveri nuk është aktiv!</td></tr>';
+      }
+    }
+
+    loadReports();
+  </script>
+</body>
+</html>
