@@ -1,7 +1,8 @@
-id,name,sku,price,quantity,category,createdAt
+id,name,sku,price,quantity,category,createdat
 1,Laptop Dell XPS,SKU-001,899.99,15,Elektronikë,2026-01-01T10:00:00.000Z
 2,Monitor Samsung 27,SKU-002,349.99,8,Elektronikë,2026-01-02T10:00:00.000Z
 3,Tastierë Logitech,SKU-003,79.99,25,Aksesore,2026-01-03T10:00:00.000Z
 4,Karrige Zyreje,SKU-004,249.99,10,Mobilje,2026-01-04T10:00:00.000Z
 5,Printer HP LaserJet,SKU-005,189.99,6,Elektronikë,2026-01-05T10:00:00.000Z
 1774728877032,iPhone 17,SKU-006,800,3,Elektronikë,2026-03-28T20:14:37.032Z
+1774819045973,iPhone 17 Pro Max,SKU-007,1300,10,Elektronikë,2026-03-29T21:17:25.973Z
