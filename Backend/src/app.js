@@ -5,30 +5,28 @@ const productRoutes = require('./routes/productRoutes');
 
 const app = express();
 
-// Mundëson komunikimin mes Frontend dhe Backend
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 1. LIDHJA ME FRONTEND: 
-// Ky rresht i tregon serverit se ku ndodhen skedarët tuaj HTML (Dashboard, Products, etj.)
-// Sipas strukturës tënde: StockFlow/Frontend/src/pages
-app.use(express.static(path.join(__dirname, '../../Frontend/src/pages')));
+const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
+app.use(express.static(pagesPath));
 
-// 2. API ROUTES:
-// Kjo lidh JSON-in që pamë te localhost:5000/api/products
 app.use('/api/products', productRoutes);
 
-// 3. FAQJA KRYESORE:
-// Kur shkruan thjesht localhost:5000, serveri do të hapë automatikisht Dashboard.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../Frontend/src/pages/Dashboard.html'));
+const pages = ['dashboard', 'products', 'warehouses', 'stockmovements', 'suppliers', 'orders', 'customers', 'reports'];
+
+pages.forEach(page => {
+  app.get(`/${page}`, (req, res) => {
+    res.sendFile(path.join(pagesPath, `${page}.html`));
+  });
+  app.get(`/${page}.html`, (req, res) => {
+    res.sendFile(path.join(pagesPath, `${page}.html`));
+  });
 });
 
-// Ndezja e serverit në portën 5000
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`-----------------------------------------`);
-    console.log(`🚀 Serveri u ndez me sukses!`);
-    console.log(`👉 Hap browserin te: http://localhost:5000`);
-    console.log(`-----------------------------------------`);
+app.get('/', (req, res) => {
+  res.sendFile(path.join(pagesPath, 'dashboard.html'));
 });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`StockFlow running on port ${PORT}`));
