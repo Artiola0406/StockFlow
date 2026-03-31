@@ -4,6 +4,7 @@
 **Studenti:** Artiola Qollaku  
 **Universiteti:** Universiteti "Isa Boletini" — Mitrovicë  
 **GitHub:** https://github.com/Artiola0406/StockFlow
+**Website Live:** https://stockflow-ltnv.onrender.com
 
 ---
 
@@ -78,3 +79,38 @@ Kodi i plotë, historia e commit-eve dhe të gjitha skedarët janë të disponue
 - **Delete:** butoni 🗑️ kërkon konfirmim → dërgon `DELETE /api/products/:id` → rekordi hiqet nga CSV
 
 Të dyja veprimet reflektohen menjëherë në UI pa reload.
+
+
+## Ndryshimet e Bëra Pas Dorëzimit Fillestar
+
+Pas dorëzimit të detyrës bazë, sistemi u zgjerua ndjeshëm:
+
+### 1. Frontend i Plotë me 8 Faqe
+U ndërtua frontend profesional me **Tailwind CSS** dhe **Chart.js**:
+- Sidebar navigues me dark mode toggle
+- Stats cards dinamike në çdo faqe
+- Modal dialogs për update
+- Toast notifications për feedback
+- Dizajn responsive për telefon, tablet dhe desktop
+
+### 2. Deployment në Cloud
+StockFlow u vendos live në **Render.com**:
+- URL: `https://stockflow-ltnv.onrender.com`
+- Auto-deploy nga GitHub — çdo `git push` përditëson live
+- Aksesueshëm nga çdo pajisje në internet
+
+### 3. API i Zgjeruar
+- `GET /api/products?filter=` — kërkim me filtrim
+- `GET /api/products/:id` — gjej sipas ID
+- `POST /api/products` — shto me validim
+- `PUT /api/products/:id` — përditëso
+- `DELETE /api/products/:id` — fshi
+- Static file serving për të gjitha HTML faqet
+
+### 4. Analitika dhe Raporte
+- Grafik doughnut për produktet sipas kategorisë
+- Grafik bar për top 5 produktet me vlerë
+- Tabela automatike për stok të ulët
+- Statistika të llogarituara në kohë reale
+
+---
