@@ -5,8 +5,7 @@ const IRepository = require('./IRepository');
 class FileRepository extends IRepository {
   constructor(filename) {
     super();
-    // path.resolve siguron që rruga të jetë absolute dhe e saktë
-    this.filepath = path.resolve(__dirname, '../../data', filename);
+    this.filepath = path.join(__dirname, '../../data/', filename);
     this.data = [];
     this._load();
   }
@@ -15,29 +14,36 @@ class FileRepository extends IRepository {
     try {
       if (fs.existsSync(this.filepath)) {
         const content = fs.readFileSync(this.filepath, 'utf-8');
-        // Ndajmë rreshtat dhe heqim ata që janë bosh
-        const lines = content.split('\n').map(line => line.trim()).filter(line => line !== '');
-        
-        if (lines.length > 0) {
-          // I kthejmë header-at në shkronja të vogla (id, name, sku...)
-          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-          
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        if (lines.length > 1) {
+          const headers = lines[0].split(',');
           this.data = lines.slice(1).map(line => {
             const values = line.split(',');
             const obj = {};
-            headers.forEach((h, i) => {
-              // Sigurohemi që vlera ekziston, përndryshe vendosim string bosh
-              obj[h] = values[i] ? values[i].trim() : "";
-            });
+            headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
             return obj;
           });
-          console.log(`✅ U ngarkuan ${this.data.length} produkte nga ${this.filepath}`);
+          console.log(`✅ U ngarkuan ${this.data.length} rekorde nga ${this.filepath}`);
         }
       } else {
-        console.error(`❌ Skedari nuk u gjet në: ${this.filepath}`);
+        console.log(`⚠️ File nuk u gjet, po krijoj file të ri: ${this.filepath}`);
+        this._createEmptyFile();
       }
-    } catch (error) {
-      console.error("❌ Gabim gjatë ngarkimit të CSV:", error);
+    } catch (err) {
+      console.error(`❌ Gabim gjatë leximit të file: ${err.message}`);
+      console.log('Po vazhdoj me listë të zbrazët...');
+      this.data = [];
+    }
+  }
+
+  _createEmptyFile() {
+    try {
+      const dir = path.dirname(this.filepath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(this.filepath, '', 'utf-8');
+      this.data = [];
+    } catch (err) {
+      console.error(`❌ Gabim gjatë krijimit të file: ${err.message}`);
       this.data = [];
     }
   }
@@ -47,42 +53,64 @@ class FileRepository extends IRepository {
   }
 
   getById(id) {
-    return this.data.find(item => String(item.id) === String(id)) || null;
+    try {
+      const item = this.data.find(item => item.id === String(id));
+      return item || null;
+    } catch (err) {
+      console.error(`❌ Gabim në getById: ${err.message}`);
+      return null;
+    }
   }
 
   add(entity) {
-    this.data.push(entity);
-    this.save();
-    return entity;
+    try {
+      this.data.push(entity);
+      this.save();
+      return entity;
+    } catch (err) {
+      console.error(`❌ Gabim në add: ${err.message}`);
+      throw new Error('Gabim gjatë shtimit të rekordeve');
+    }
   }
 
   update(id, updatedEntity) {
-    const index = this.data.findIndex(item => String(item.id) === String(id));
-    if (index === -1) return null;
-    this.data[index] = { ...this.data[index], ...updatedEntity };
-    this.save();
-    return this.data[index];
+    try {
+      const index = this.data.findIndex(item => item.id === String(id));
+      if (index === -1) return null;
+      this.data[index] = { ...this.data[index], ...updatedEntity };
+      this.save();
+      return this.data[index];
+    } catch (err) {
+      console.error(`❌ Gabim në update: ${err.message}`);
+      throw new Error('Gabim gjatë përditësimit');
+    }
   }
 
   delete(id) {
-    const index = this.data.findIndex(item => String(item.id) === String(id));
-    if (index === -1) return false;
-    this.data.splice(index, 1);
-    this.save();
-    return true;
+    try {
+      const index = this.data.findIndex(item => item.id === String(id));
+      if (index === -1) return false;
+      this.data.splice(index, 1);
+      this.save();
+      return true;
+    } catch (err) {
+      console.error(`❌ Gabim në delete: ${err.message}`);
+      throw new Error('Gabim gjatë fshirjes');
+    }
   }
 
   save() {
     try {
       if (this.data.length === 0) {
-        // Nëse s'ka të dhëna, mund të ruajmë vetëm header-at nëse dëshironi
+        fs.writeFileSync(this.filepath, '', 'utf-8');
         return;
       }
       const headers = Object.keys(this.data[0]).join(',');
       const rows = this.data.map(item => Object.values(item).join(','));
       fs.writeFileSync(this.filepath, [headers, ...rows].join('\n'), 'utf-8');
-    } catch (error) {
-      console.error("❌ Gabim gjatë ruajtjes së CSV:", error);
+    } catch (err) {
+      console.error(`❌ Gabim gjatë ruajtjes: ${err.message}`);
+      throw new Error('File nuk mund të ruhet');
     }
   }
 }

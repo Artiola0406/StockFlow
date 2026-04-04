@@ -4,11 +4,22 @@ const ProductService = require('../services/ProductService');
 
 const service = new ProductService();
 
-// GET /api/products?filter=laptop
+// GET /api/products?filter=&sortBy=&sortOrder=
 router.get('/', (req, res) => {
   try {
-    const products = service.getAllProducts(req.query.filter);
+    const { filter, sortBy, sortOrder } = req.query;
+    const products = service.getAllProducts(filter, sortBy, sortOrder);
     res.json({ success: true, data: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/products/stats
+router.get('/stats', (req, res) => {
+  try {
+    const stats = service.calculateStatistics();
+    res.json({ success: true, data: stats });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
