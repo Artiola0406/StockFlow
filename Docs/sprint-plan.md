@@ -1,133 +1,166 @@
-Sprint 2 Plan — Artiola Qollaku
+# Sprint 2 Report — Artiola Qollaku
+Data: 8 Prill 2026
 
-Data: 1 Prill 2026
+**Lënda:** Inxhinieri Softuerike
+**Universiteti:** Universiteti "Isa Boletini" — Mitrovicë
+**GitHub:** https://github.com/Artiola0406/StockFlow
+**Live:** https://stockflow-ltnv.onrender.com
 
-Gjendja Aktuale
-Çka funksionon tani:
-CRUD i plotë për produkte (Create, Read, Update, Delete) përmes API
-FileRepository me CSV — lexon dhe ruan të dhëna
-ProductService me validim (emri jo bosh, çmimi > 0, sasia >= 0)
-8 faqe frontend: Dashboard, Products, Warehouses, StockMovements, Suppliers, Orders, Customers, Reports
-Kërkim dhe filtrim i produkteve sipas emrit dhe kategorisë
-Website live në: https://stockflow-ltnv.onrender.com
-Aksesueshëm edhe lokalisht: http://localhost:5000
-Çka nuk funksionon / probleme konkrete:
-Nuk ka unit teste — funksionaliteti nuk verifikohet automatikisht
-Error handling është i kufizuar — disa API kthejnë gabime pa mesazh të qartë
-Kërkimi nuk është case-insensitive (p.sh. “laptop” ≠ “Laptop”)
-Pas delete/update, lista në UI nuk rifreskohet gjithmonë automatikisht
-Nuk ka sortim të produkteve
-Nuk ka statistika (mesatare, max, min, total)
-Faqet e tjera përdorin localStorage dhe nuk janë të integruara me backend
-A kompajlohet dhe ekzekutohet programi?
+---
 
-Po — ekzekutohet me node src/app.js dhe hapet në port 5000
+## Çka Përfundova
 
-Plani i Sprintit
-Feature e Re — Statistika të Avancuara dhe Sortim
-Përshkrimi:
+### 1. Error Handling i Plotë 
 
-Do të implementohen funksionalitete të reja për analizë dhe organizim të produkteve.
+**FileRepository.js** — u shtuan try-catch në çdo operacion:
 
-1. Statistika në ProductService
+- `_load()` — nëse CSV file mungon, krijohet automatikisht file i ri me mesazh:
+  `"File nuk u gjet, po krijoj file të ri..."`
+- `_createEmptyFile()` — metodë e re që krijon file dhe folder nëse nuk ekzistojnë
+- `getById()` — trajton gabime dhe kthen `null` pa crash
+- `add()` — trajton gabime gjatë shtimit dhe ruajtjes
+- `update()` — trajton gabimin nëse ID nuk ekziston
+- `delete()` — trajton gabimin nëse ID nuk ekziston
+- `save()` — trajton gabimin nëse file nuk mund të shkruhet
 
-Service do të përmbajë logjikën e biznesit për llogaritje:
+**ProductService.js** — u shtua validim i plotë:
 
-Çmimi mesatar i produkteve
-Produkti me çmimin maksimal
-Produkti me çmimin minimal
-Numri i produkteve sipas kategorisë
-Vlera totale e inventarit (price × quantity)
+- Input i gabuar për çmim (p.sh. "abc") → mesazh:
+  `"Ju lutem shkruani numër valid për çmimin"`
+- Input i gabuar për sasi → mesazh:
+  `"Ju lutem shkruani numër valid për sasinë"`
+- ID që nuk ekziston → mesazh:
+  `"Produkti me ID X nuk u gjet"`
+- Programi **kurrë nuk crash-on** — çdo gabim trajtohet dhe kthehet mesazh i qartë
 
-👉 Rëndësi arkitekturore:
+**productRoutes.js** — u shtuan HTTP status codes të sakta:
+- `400 Bad Request` — input i gabuar
+- `404 Not Found` — ID nuk ekziston
+- `500 Internal Server Error` — gabim i serverit
 
-ProductService përmban gjithë logjikën
-ProductRepository merret vetëm me lexim/shkrim nga CSV (pa logjikë)
-2. Sortim i produkteve
+---
 
-Useri mund të zgjedhë:
+### 2. Feature e Re — Statistika të Avancuara dhe Sortim 
 
-Emri: A-Z / Z-A
-Çmimi: rritës / zbritës
-Sasia: rritës / zbritës
+**Metodat e reja në ProductService.js:**
 
-Sortimi implementohet në Service layer, jo në UI.
+| Metoda | Përshkrimi |
+|---|---|
+| `calculateStatistics()` | Kthen objekt me të gjitha statistikat |
+| `calculateAveragePrice()` | Llogarit çmimin mesatar të produkteve |
+| `getMaxPriceProduct()` | Kthen produktin me çmimin më të lartë |
+| `getMinPriceProduct()` | Kthen produktin me çmimin më të ulët |
+| `_sort(products, sortBy, sortOrder)` | Sorton listën sipas kriterit |
 
-Si e përdor useri:
-Në faqen Products shfaqet dropdown për sortim
-Shfaqen kartela me statistika (average, max, min, total)
-Lista rifreskohet automatikisht pa reload
-Rrjedha e sistemit:
+**Sortimi i produkteve** — implementuar në Service layer:
+- Sipas emrit: A-Z dhe Z-A
+- Sipas çmimit: rritës dhe zbritës
+- Sipas sasisë: rritës dhe zbritës
 
-UI → ProductService → ProductRepository → CSV
+**Kërkim case-insensitive** — u rregullua bug-u ekzistues:
+- Para: `"laptop"` nuk gjente `"Laptop"`
+- Pas: `"laptop"`, `"LAPTOP"`, `"Laptop"` — të gjitha gjejnë rezultate
 
-Error Handling — 3 raste specifike
-1. File mungon (Repository)
-Problem: products.csv nuk ekziston → crash
-Zgjidhje:
-try {
-  // read file
-} catch (err) {
-  // krijo file të ri
+**Endpoint i ri:**
+```
+GET /api/products/stats
+```
+Kthen:
+```json
+{
+  "totalProducts": 6,
+  "totalValue": 24339.36,
+  "averagePrice": 373.99,
+  "maxPriceProduct": { "name": "iPhone 17", "price": "8999.99" },
+  "minPriceProduct": { "name": "Tastiere Logitech", "price": "79.99" },
+  "byCategory": { "Elektronike": 4, "Aksesore": 1, "Mobilje": 1 }
 }
-Mesazh:
+```
 
-"File nuk u gjet, po krijoj file të ri..."
+**Parametra të rinj në API:**
+```
+GET /api/products?filter=laptop&sortBy=price&sortOrder=asc
+GET /api/products?sortBy=name&sortOrder=desc
+```
 
-2. Input i gabuar (Service + API)
-Problem: user dërgon "abc" për çmim
-Zgjidhje:
-Validim me if (jo vetëm try-catch)
-Kthim i error me HTTP status
+---
 
-Shembull:
+### 3. Unit Tests me Jest — 10 teste ✅
 
-400 Bad Request → input invalid
-Mesazh:
+**Framework:** Jest (Node.js)
+**Strategjia:** Mock Repository — testet nuk varen nga CSV file real
 
-"Ju lutem shkruani numër valid për çmimin"
+**Output i testeve:**
+```
+PASS  tests/ProductService.test.js
+  ✓ addProduct me të dhëna valide duhet të kthejë produktin
+  ✓ addProduct me emër bosh duhet të hedhë error
+  ✓ addProduct me çmim 0 duhet të hedhë error
+  ✓ getAllProducts me filter Laptop duhet të gjejë produkt
+  ✓ getAllProducts me filter që nuk ekziston duhet të kthejë array bosh
+  ✓ calculateAveragePrice duhet të kthejë mesataren e saktë
+  ✓ getMaxPriceProduct duhet të kthejë produktin me çmimin më të lartë
+  ✓ getMinPriceProduct duhet të kthejë produktin me çmimin më të ulët
+  ✓ deleteProduct me ID valid duhet të fshijë produktin
+  ✓ getProductById me ID që nuk ekziston duhet të hedhë error
 
-3. ID nuk ekziston
-Problem: kërkohet produkt që nuk ekziston
-Zgjidhje:
-Service kthen null / error
-API kthen:
-404 Not Found
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Time:        1.176s
+```
 
-"Produkti me këtë ID nuk u gjet"
+**Testet e shkruara:**
 
-Qëllimi:
+| # | Testi | Lloji | Rezultati |
+|---|---|---|---|
+| 1 | addProduct — produkt valid | Rast normal | ✅ |
+| 2 | addProduct — emër bosh | Rast kufitar | ✅ |
+| 3 | addProduct — çmim 0 | Rast kufitar | ✅ |
+| 4 | getAllProducts — filter ekziston | Rast normal | ✅ |
+| 5 | getAllProducts — filter nuk ekziston | Rast kufitar | ✅ |
+| 6 | calculateAveragePrice — mesatare e saktë | Feature e re | ✅ |
+| 7 | getMaxPriceProduct — produkti korrekt | Feature e re | ✅ |
+| 8 | getMinPriceProduct — produkti korrekt | Feature e re | ✅ |
+| 9 | deleteProduct — ID ekziston | Rast normal | ✅ |
+| 10 | getProductById — ID nuk ekziston | Rast kufitar | ✅ |
 
-Programi nuk crash-on kurrë, dhe gjithmonë jep mesazh të qartë për userin
+---
 
-Unit Tests — minimum 3 teste (20 pikë)
-Teknologjia:
+### 4. Ndryshime të tjera
 
-Jest (Node.js)
+**Deployment i azhurnuar:**
+- Kodi i ri u push-ua automatikisht në Render.com
+- Website live: https://stockflow-ltnv.onrender.com
+- Funksionon edhe lokalisht: http://localhost:5000
 
-Metodat që do të testohen:
-CRUD:
-addProduct() — produkt valid → sukses
-addProduct() — emër bosh → error
-Kërkimi:
-getAllProducts(filter) — produkt ekziston → gjendet
-getAllProducts(filter) — nuk ekziston → array bosh
-Feature e re (shumë e rëndësishme):
-calculateAveragePrice() → kthen vlerë të saktë
-getMaxPriceProduct() → kthen produktin korrekt
-Izolim i testit:
-Do përdoret mock për Repository (jo CSV real)
-Testet nuk varen nga file system
-Shembull:
-test('addProduct me emër bosh duhet të hedhë error', () => {
-  const service = new ProductService(mockRepo);
-  expect(() => service.addProduct({ name: '', price: 10, quantity: 5 }))
-    .toThrow();
-});
+**Struktura e fajllëve të ndryshuar:**
+```
+Backend/
+├── src/
+│   ├── repositories/
+│   │   └── FileRepository.js    ← error handling i plotë
+│   ├── services/
+│   │   └── ProductService.js    ← statistika + sortim + validim
+│   └── routes/
+│       └── productRoutes.js     ← endpoint i ri /stats
+├── tests/
+│   └── ProductService.test.js   ← 10 unit teste ✅
+└── package.json                 ← jest i shtuar
+```
 
-test('calculateAveragePrice kthen mesataren e saktë', () => {
-  const service = new ProductService(mockRepoWithData);
-  const avg = service.calculateAveragePrice();
-  expect(avg).toBeGreaterThan(0);
-});
+---
+
+## Çka Mbeti
+
+- Integrimi i faqeve Warehouses, Orders, Customers me backend API (ende localStorage)
+- Autentifikim JWT me role (Admin, Menaxher, Staf)
+- Lidhja me PostgreSQL për persistencë të plotë
+
+---
+
+## Çka Mësova
+
+1. **Unit testing me mock objects** — Si të izoloj testet nga file system duke përdorur mock repository, kështu testet janë të shpejta dhe të besueshme
+2. **Error handling në shtresa** — Çdo shtresë (Repository, Service, Route) duhet të trajtojë gabimet e veta dhe t'i kthejë mesazhe të qarta
+3. **Case-insensitive search** — Rëndësia e `.toLowerCase()` për UX të mirë
 
