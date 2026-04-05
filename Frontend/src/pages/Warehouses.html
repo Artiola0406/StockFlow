@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StockFlow — Depot</title>
+  <title>StockFlow — Depo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
@@ -11,15 +11,47 @@
   <div id="navbar-container"></div>
   <main class="lg:ml-64 pt-16 lg:pt-0 p-6">
     <div class="max-w-7xl mx-auto">
-      <div class="mb-6 pt-2 flex justify-between items-center">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Depot</h1>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Menaxhimi i depove</p>
-        </div>
-        <button onclick="openAddModal()" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors">+ Shto Depo</button>
+      <div class="mb-6 pt-2">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Depo</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Menaxho depot e inventarit</p>
       </div>
-
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-blue-500" id="stat-total">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Depo</div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div class="text-2xl font-bold text-green-500" id="stat-active">0</div>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Depo Aktive</div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 mb-6">
+        <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">➕ Shto Depo të Re</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Emri *</label>
+            <input id="f-name" type="text" placeholder="Depo Qendrore" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Lokacioni *</label>
+            <input id="f-location" type="text" placeholder="Prishtinë" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Kapaciteti</label>
+            <input id="f-capacity" type="number" placeholder="1000" min="0" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="flex flex-col justify-between">
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Statusi</label>
+            <div class="flex items-center gap-2 mb-1">
+              <input id="f-active" type="checkbox" checked class="w-4 h-4 rounded text-blue-500">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Aktive</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="addWarehouse()" class="mt-4 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors">✅ Shto Depon</button>
+      </div>
       <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h2 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">🏭 Lista e Depove</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
@@ -28,43 +60,35 @@
                 <th class="pb-3 font-medium">Lokacioni</th>
                 <th class="pb-3 font-medium">Kapaciteti</th>
                 <th class="pb-3 font-medium">Statusi</th>
-                <th class="pb-3 font-medium"></th>
-               </tr>
+                <th class="pb-3 font-medium">Veprimet</th>
+              </tr>
             </thead>
-            <tbody id="warehousesBody"></tbody>
-           </table>
+            <tbody id="whBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Modal për shtim/ndryshim -->
-  <div id="warehouseModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-    <div class="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl">
-      <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4" id="modalTitle">Shto Depo</h3>
-      <input type="hidden" id="editId">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Emri *</label>
-          <input id="warehouseName" type="text" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Lokacioni</label>
-          <input id="warehouseLocation" type="text" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Kapaciteti *</label>
-          <input id="warehouseCapacity" type="number" min="0" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-        </div>
-        <div>
-          <label class="flex items-center gap-2">
-            <input id="warehouseActive" type="checkbox" checked> <span class="text-sm text-gray-600 dark:text-gray-400">Aktiv</span>
-          </label>
+  <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+      <h2 class="font-semibold text-gray-800 dark:text-white mb-4">✏️ Ndrysho Depon</h2>
+      <input type="hidden" id="edit-id">
+      <div class="space-y-3">
+        <div><label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Emri</label>
+          <input id="edit-name" type="text" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+        <div><label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Lokacioni</label>
+          <input id="edit-location" type="text" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+        <div><label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Kapaciteti</label>
+          <input id="edit-capacity" type="number" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+        <div class="flex items-center gap-2">
+          <input id="edit-active" type="checkbox" class="w-4 h-4 rounded text-blue-500">
+          <label class="text-sm text-gray-600 dark:text-gray-400">Aktive</label>
         </div>
       </div>
-      <div class="flex justify-end gap-3 mt-6">
-        <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Anulo</button>
-        <button onclick="saveWarehouse()" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Ruaj</button>
+      <div class="flex gap-3 mt-5">
+        <button onclick="saveEdit()" class="flex-1 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors">💾 Ruaj</button>
+        <button onclick="closeModal('editModal')" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-xl text-sm font-semibold transition-colors">✖ Anulo</button>
       </div>
     </div>
   </div>
@@ -73,118 +97,73 @@
   <script src="navbar.js"></script>
   <script>
     renderNavbar('warehouses');
-    const STORAGE_KEY = 'warehouses';
+    const KEY = 'warehouses';
 
-    function loadWarehouses() {
-      const data = lsGet(STORAGE_KEY);
-      const tbody = document.getElementById('warehousesBody');
-      if (data.length === 0) {
-        showEmpty('warehousesBody', 'Nuk ka depo të regjistruara.');
-        return;
-      }
+    function render() {
+      const data = lsGet(KEY);
+      document.getElementById('stat-total').textContent = data.length;
+      document.getElementById('stat-active').textContent = data.filter(w => w.isActive).length;
+      const tbody = document.getElementById('whBody');
+      if (data.length === 0) { showEmpty('whBody', 'Nuk ka depo.'); return; }
       tbody.innerHTML = data.map(w => `
-        <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0">
-          <td class="py-3 font-medium">${escapeHtml(w.name)}</td>
-          <td class="py-3 text-gray-500">${escapeHtml(w.location || '—')}</td>
-          <td class="py-3">${w.capacity}</td>
-          <td class="py-3"><span class="px-2 py-0.5 rounded-full text-xs ${w.isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">${w.isActive ? 'Aktiv' : 'Jo aktiv'}</span></td>
+        <tr class="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+          <td class="py-3 font-medium text-gray-800 dark:text-gray-200">${w.name}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">${w.location}</td>
+          <td class="py-3 text-gray-500 dark:text-gray-400">${w.capacity || '—'}</td>
+          <td class="py-3"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ${w.isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}">${w.isActive ? 'Aktive' : 'Joaktive'}</span></td>
           <td class="py-3">
-            <button onclick="editWarehouse('${w.id}')" class="text-blue-500 hover:text-blue-600 mr-2">✏️</button>
-            <button onclick="deleteWarehouse('${w.id}')" class="text-red-500 hover:text-red-600">🗑️</button>
+            <div class="flex gap-2">
+              <button onclick="openEdit('${w.id}')" class="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 rounded-lg text-xs font-medium hover:bg-yellow-100 transition-colors">✏️ Ndrysho</button>
+              <button onclick="deleteWH('${w.id}')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors">🗑️ Fshi</button>
+            </div>
           </td>
-        </tr>
-      `).join('');
+        </tr>`).join('');
     }
 
-    function openAddModal() {
-      document.getElementById('modalTitle').innerText = 'Shto Depo';
-      document.getElementById('editId').value = '';
-      document.getElementById('warehouseName').value = '';
-      document.getElementById('warehouseLocation').value = '';
-      document.getElementById('warehouseCapacity').value = '';
-      document.getElementById('warehouseActive').checked = true;
-      document.getElementById('warehouseModal').classList.remove('hidden');
-      document.getElementById('warehouseModal').style.display = 'flex';
+    function addWarehouse() {
+      const name = document.getElementById('f-name').value.trim();
+      const location = document.getElementById('f-location').value.trim();
+      if (!name) return showToast('Emri është i detyrueshëm!', 'error');
+      if (!location) return showToast('Lokacioni është i detyrueshëm!', 'error');
+      const data = lsGet(KEY);
+      data.push({ id: Date.now().toString(), name, location, capacity: document.getElementById('f-capacity').value || 0, isActive: document.getElementById('f-active').checked });
+      lsSet(KEY, data);
+      showToast('✅ Depoja u shtua!', 'success');
+      ['f-name','f-location','f-capacity'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-active').checked = true;
+      render();
     }
 
-    function editWarehouse(id) {
-      const warehouses = lsGet(STORAGE_KEY);
-      const w = warehouses.find(x => x.id === id);
-      if (w) {
-        document.getElementById('modalTitle').innerText = 'Ndrysho Depo';
-        document.getElementById('editId').value = w.id;
-        document.getElementById('warehouseName').value = w.name;
-        document.getElementById('warehouseLocation').value = w.location || '';
-        document.getElementById('warehouseCapacity').value = w.capacity;
-        document.getElementById('warehouseActive').checked = w.isActive !== false;
-        document.getElementById('warehouseModal').classList.remove('hidden');
-        document.getElementById('warehouseModal').style.display = 'flex';
-      }
+    function openEdit(id) {
+      const w = lsGet(KEY).find(x => x.id === id);
+      document.getElementById('edit-id').value = w.id;
+      document.getElementById('edit-name').value = w.name;
+      document.getElementById('edit-location').value = w.location;
+      document.getElementById('edit-capacity').value = w.capacity;
+      document.getElementById('edit-active').checked = w.isActive;
+      openModal('editModal');
     }
 
-    function saveWarehouse() {
-      const name = document.getElementById('warehouseName').value.trim();
-      const capacity = parseInt(document.getElementById('warehouseCapacity').value);
-      if (!name) return showToast('Emri i depose është i detyrueshëm', 'error');
-      if (isNaN(capacity) || capacity < 0) return showToast('Kapaciteti duhet të jetë numër jo negativ', 'error');
-
-      const warehouses = lsGet(STORAGE_KEY);
-      const editId = document.getElementById('editId').value;
-      if (editId) {
-        const index = warehouses.findIndex(w => w.id === editId);
-        if (index !== -1) {
-          warehouses[index] = {
-            ...warehouses[index],
-            name,
-            location: document.getElementById('warehouseLocation').value.trim(),
-            capacity,
-            isActive: document.getElementById('warehouseActive').checked
-          };
-          lsSet(STORAGE_KEY, warehouses);
-          showToast('Depo u përditësua', 'success');
-        }
-      } else {
-        const newWarehouse = {
-          id: Date.now().toString(),
-          name,
-          location: document.getElementById('warehouseLocation').value.trim(),
-          capacity,
-          isActive: document.getElementById('warehouseActive').checked
-        };
-        warehouses.push(newWarehouse);
-        lsSet(STORAGE_KEY, warehouses);
-        showToast('Depo u shtua', 'success');
-      }
-      closeModal();
-      loadWarehouses();
+    function saveEdit() {
+      const id = document.getElementById('edit-id').value;
+      const data = lsGet(KEY);
+      const i = data.findIndex(x => x.id === id);
+      data[i] = { ...data[i], name: document.getElementById('edit-name').value, location: document.getElementById('edit-location').value, capacity: document.getElementById('edit-capacity').value, isActive: document.getElementById('edit-active').checked };
+      lsSet(KEY, data);
+      closeModal('editModal');
+      showToast('✅ Depoja u përditësua!', 'success');
+      render();
     }
 
-    function deleteWarehouse(id) {
-      confirmDelete('A jeni i sigurt që doni ta fshini këtë depo?', () => {
-        const warehouses = lsGet(STORAGE_KEY).filter(w => w.id !== id);
-        lsSet(STORAGE_KEY, warehouses);
-        showToast('Depo u fshi', 'success');
-        loadWarehouses();
+    function deleteWH(id) {
+      confirmDelete('A jeni i sigurt?', () => {
+        lsSet(KEY, lsGet(KEY).filter(x => x.id !== id));
+        showToast('✅ Depoja u fshi!', 'success');
+        render();
       });
     }
 
-    function closeModal() {
-      const modal = document.getElementById('warehouseModal');
-      modal.classList.add('hidden');
-      modal.style.display = 'none';
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-      });
-    }
-
-    loadWarehouses();
+    render();
   </script>
 </body>
 </html>
