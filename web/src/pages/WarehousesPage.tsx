@@ -100,11 +100,9 @@ export function WarehousesPage() {
               onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
               className="h-4 w-4 rounded border-cyan-400/50 text-cyan-500"
             />
-            <Label className="mb-0 normal-case">
-              <span className="cursor-pointer" onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}>
-                Aktive
-              </span>
-            </Label>
+            <label htmlFor="wh-active" className="cursor-pointer pb-0.5 text-sm text-slate-600 dark:text-slate-300">
+              Aktive
+            </label>
           </div>
         </div>
         <Button type="button" className="mt-4" onClick={add}>

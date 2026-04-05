@@ -6,6 +6,7 @@ import { apiGet } from '../lib/api'
 import { formatCurrency } from '../lib/format'
 import type { ApiListResponse, Product } from '../types'
 import { useTheme } from '../context/ThemeContext'
+import type { TooltipItem } from 'chart.js'
 
 const NEON = ['#22d3ee', '#a78bfa', '#f472b6', '#38bdf8', '#e879f9', '#2dd4bf']
 
@@ -121,7 +122,7 @@ export function ReportsPage() {
           position: 'bottom' as const,
           labels: {
             color: isDark ? '#cbd5e1' : '#475569',
-            font: { family: 'Plus Jakarta Sans', size: 11, weight: 'bold' },
+            font: { family: 'Plus Jakarta Sans', size: 11, weight: 'bold' as const },
             usePointStyle: true,
           },
         },
@@ -156,7 +157,7 @@ export function ReportsPage() {
           padding: 12,
           cornerRadius: 10,
           callbacks: {
-            label: (ctx) => {
+            label: (ctx: TooltipItem<'bar'>) => {
               const v = ctx.parsed.y
               return v == null ? '' : formatCurrency(v)
             },
@@ -165,7 +166,7 @@ export function ReportsPage() {
       },
       scales: {
         x: {
-          ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 10, weight: 'bold' } },
+          ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 10, weight: 'bold' as const } },
           grid: { color: isDark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.12)' },
         },
         y: {

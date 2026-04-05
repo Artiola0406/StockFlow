@@ -128,7 +128,7 @@ export function DashboardPage() {
           labels: {
             color: isDark ? '#cbd5e1' : '#475569',
             padding: 16,
-            font: { family: 'Plus Jakarta Sans', size: 11, weight: 'bold' },
+            font: { family: 'Plus Jakarta Sans', size: 11, weight: 'bold' as const },
             usePointStyle: true,
           },
         },
