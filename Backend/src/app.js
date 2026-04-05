@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const productRoutes = require('./routes/productRoutes');
+const warehouseRoutes = require('./routes/warehouseRoutes');
 
 const app = express();
 
@@ -10,7 +11,9 @@ app.use(express.json());
 
 const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
 app.use(express.static(pagesPath));
+
 app.use('/api/products', productRoutes);
+app.use('/api/warehouses', warehouseRoutes);
 
 const pages = [
   { route: 'dashboard', file: 'Dashboard.html' },

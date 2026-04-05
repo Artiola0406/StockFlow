@@ -1,3 +1,98 @@
+# Sprint 2 Plan — Artiola Qollaku
+Data: 1 Prill 2026
+
+## Gjendja Aktuale
+
+### Çka funksionon tani:
+- CRUD i plotë për produkte (Create, Read, Update, Delete) përmes API
+- FileRepository me CSV — lexon dhe ruan të dhëna
+- ProductService me validim (emri jo bosh, çmimi > 0, sasia >= 0)
+- 8 faqe frontend: Dashboard, Products, Warehouses, StockMovements, Suppliers, Orders, Customers, Reports
+- Kërkim dhe filtrim i produkteve sipas emrit dhe kategorisë
+- Website live në: https://stockflow-ltnv.onrender.com
+- Aksesueshëm edhe lokalisht: http://localhost:5000
+
+### Çka nuk funksionon / mund të përmirësohet:
+- Nuk ka unit teste — programi nuk testohet automatikisht
+- Error handling është i kufizuar — disa gabime nuk shfaqen qartë
+- Nuk ka sortim të listës së produkteve
+- Nuk ka statistika të detajuara (max, min, mesatare çmimi)
+- Faqet e tjera (Warehouses, Orders etj.) ruajnë në localStorage, jo CSV/backend
+
+### A kompajlohet dhe ekzekutohet programi?
+Po — ekzekutohet me `node src/app.js` dhe hapet në port 5000.
+
+---
+
+## Plani i Sprintit
+
+### Feature e Re — Statistika të Avancuara dhe Sortim 
+
+**Çka do të ndërtohet:**
+
+**1. Statistika në ProductService** — service llogarit:
+- Çmimin mesatar të produkteve
+- Produktin me çmimin maksimal
+- Produktin me çmimin minimal  
+- Numrin total të produkteve sipas kategorisë
+- Vlerën totale të inventarit (çmimi × sasia)
+
+**2. Sortim i produkteve** — useri zgjedh si të sortohet lista:
+- Sipas emrit A-Z ose Z-A
+- Sipas çmimit (lart-poshtë ose poshtë-lart)
+- Sipas sasisë (lart-poshtë)
+
+**Si e përdor useri:**
+Në faqen Products shfaqen dropdown për sortim dhe kartela me statistika. Useri zgjedh opsionin e dëshiruar dhe lista filtrohet/sortohet automatikisht pa reload.
+
+**Rrjedha:** UI → ProductService (sortim + statistika) → ProductRepository → CSV
+
+---
+
+### Error Handling — 3 raste specifike 
+
+**Pjesët që mund të crashojnë tani:**
+
+1. **File CSV mungon** — nëse `products.csv` fshihet aksidentalisht, serveri crash-on
+   - **Zgjidhja:** try-catch në `FileRepository._load()` — nëse file mungon, krijohet automatikisht i zbrazët me mesazh "File nuk u gjet, po krijoj file të ri..."
+
+2. **Input i gabuar nga API** — nëse useri dërgon çmim "abc" ose fushë bosh
+   - **Zgjidhja:** try-catch në `ProductService.addProduct()` dhe `updateProduct()` me mesazhe të qarta si "Ju lutem shkruani numër valid për çmimin"
+
+3. **ID nuk ekziston** — nëse useri kërkon produkt me ID që nuk ekziston
+   - **Zgjidhja:** try-catch në `ProductService.getProductById()` me mesazh "Produkti me këtë ID nuk u gjet" — programi vazhdon pa u mbyllur
+
+---
+
+### Unit Tests — minimum 3 teste
+
+**Metodat që do të testohen:**
+
+1. `ProductService.addProduct()` — rast normal: shto produkt valid → kthehet sukses
+2. `ProductService.addProduct()` — rast kufitar: emri bosh → kthehet error
+3. `ProductService.getAllProducts(filter)` — kërko produkt që ekziston → gjendet
+4. `ProductService.getAllProducts(filter)` — kërko produkt që nuk ekziston → array bosh
+5. `ProductService.deleteProduct(id)` — fshi produkt që ekziston → sukses
+
+**Teknologjia:** Jest (framework testimi për JavaScript/Node.js)
+```javascript
+// Shembull test
+test('addProduct me emër bosh duhet të hedhë error', () => {
+  const service = new ProductService(new ProductRepository());
+  expect(() => service.addProduct({ name: '', price: 10, quantity: 5 }))
+    .toThrow('Emri i produktit eshte i detyrueshëm');
+});
+
+test('getAllProducts me filter gjen produktin', () => {
+  const service = new ProductService(new ProductRepository());
+  const result = service.getAllProducts('Laptop');
+  expect(result.length).toBeGreaterThan(0);
+});
+```
+
+---
+
+
 # Sprint 2 Report — Artiola Qollaku
 Data: 8 Prill 2026
 
@@ -10,7 +105,7 @@ Data: 8 Prill 2026
 
 ## Çka Përfundova
 
-### 1. Error Handling i Plotë 
+### 1. Error Handling i Plotë ✅
 
 **FileRepository.js** — u shtuan try-catch në çdo operacion:
 
@@ -40,7 +135,7 @@ Data: 8 Prill 2026
 
 ---
 
-### 2. Feature e Re — Statistika të Avancuara dhe Sortim 
+### 2. Feature e Re — Statistika të Avancuara dhe Sortim ✅
 
 **Metodat e reja në ProductService.js:**
 
@@ -52,7 +147,7 @@ Data: 8 Prill 2026
 | `getMinPriceProduct()` | Kthen produktin me çmimin më të ulët |
 | `_sort(products, sortBy, sortOrder)` | Sorton listën sipas kriterit |
 
-**Sortimi i produkteve** — implementuar në Service layer:
+**Sortimi i produkteve** — implementuar në Service layer (jo UI):
 - Sipas emrit: A-Z dhe Z-A
 - Sipas çmimit: rritës dhe zbritës
 - Sipas sasisë: rritës dhe zbritës
@@ -163,4 +258,6 @@ Backend/
 1. **Unit testing me mock objects** — Si të izoloj testet nga file system duke përdorur mock repository, kështu testet janë të shpejta dhe të besueshme
 2. **Error handling në shtresa** — Çdo shtresë (Repository, Service, Route) duhet të trajtojë gabimet e veta dhe t'i kthejë mesazhe të qarta
 3. **Case-insensitive search** — Rëndësia e `.toLowerCase()` për UX të mirë
+
+
 
