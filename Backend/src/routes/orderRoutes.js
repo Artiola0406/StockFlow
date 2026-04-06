@@ -5,20 +5,20 @@ const useDatabase = process.env.DATABASE_URL ? true : false;
 
 let service;
 if (useDatabase) {
-  const WarehouseService = require('../services/WarehouseService');
-  const WarehouseDbRepository = require('../repositories/WarehouseDbRepository');
-  service = new WarehouseService(new WarehouseDbRepository());
-  console.log('✅ Warehouse routes: PostgreSQL');
+  const OrderService = require('../services/OrderService');
+  const OrderDbRepository = require('../repositories/OrderDbRepository');
+  service = new OrderService(new OrderDbRepository());
+  console.log('✅ Order routes: PostgreSQL');
 } else {
-  const WarehouseService = require('../services/WarehouseService');
-  service = new WarehouseService();
-  console.log('⚠️ Warehouse routes: CSV');
+  const OrderService = require('../services/OrderService');
+  service = new OrderService();
+  console.log('⚠️ Order routes: CSV');
 }
 
 router.get('/', async (req, res) => {
   try {
-    const warehouses = await service.getAllWarehouses(req.query.filter);
-    res.json({ success: true, data: warehouses });
+    const items = await service.getAllOrders();
+    res.json({ success: true, data: items });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -33,19 +33,19 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-router.get('/active', async (req, res) => {
+router.get('/by-status/:status', async (req, res) => {
   try {
-    const items = await service.getActiveWarehouses();
+    const items = await service.getOrdersByStatus(req.params.status);
     res.json({ success: true, data: items });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    const warehouse = await service.getWarehouseById(req.params.id);
-    res.json({ success: true, data: warehouse });
+    const item = await service.getOrderById(req.params.id);
+    res.json({ success: true, data: item });
   } catch (error) {
     res.status(404).json({ success: false, message: error.message });
   }
@@ -53,8 +53,8 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const warehouse = await service.addWarehouse(req.body);
-    res.status(201).json({ success: true, data: warehouse });
+    const item = await service.addOrder(req.body);
+    res.status(201).json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -62,8 +62,8 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const warehouse = await service.updateWarehouse(req.params.id, req.body);
-    res.json({ success: true, data: warehouse });
+    const item = await service.updateOrder(req.params.id, req.body);
+    res.json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -71,8 +71,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await service.deleteWarehouse(req.params.id);
-    res.json({ success: true, message: 'Depoja u fshi me sukses' });
+    await service.deleteOrder(req.params.id);
+    res.json({ success: true, message: 'Porosia u fshi me sukses' });
   } catch (error) {
     res.status(404).json({ success: false, message: error.message });
   }

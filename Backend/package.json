@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node src/app.js",
-    "build:client": "cd ../web && npm install && npm run build",
+    "build:client": "cd ../web && npm install --include=dev && npm run build",
     "render-build": "npm install && npm run build:client",
     "test": "jest",
     "migrate": "node src/database/migrate.js"

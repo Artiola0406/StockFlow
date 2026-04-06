@@ -1,0 +1,128 @@
+================================================================================
+STOCKFLOW — PËRMBLEDHJE NDRYSHIMESH (që nga 4 prilli 2026)
+================================================================================
+Data e përgatitjes: 5 prill 2026
+Baza: historia e commit-eve në Git (branch main)
+
+Kufiri kohor: përfshin të gjitha commit-et me datë 2026-04-04 dhe 2026-04-05.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+A) 4 PRILL 2026
+────────────────────────────────────────────────────────────────────────────────
+
+1) Commit: Sprint 2 i përfunduar (832383f)
+   • Backend — produktet:
+     - Trajtim më i mirë gabimesh, statistika, renditje (sort).
+     - Ndryshime në: FileRepository.js, productRoutes.js, ProductService.js
+     - Shtuar: Backend/tests/ProductService.test.js (10 teste njësi).
+
+2) Commit: Dokumentacion sprint (3150e4f)
+   • Përditësuar i madh Docs/sprint-plan.md (përshkrim Sprint 2 / raport).
+
+3) Commit: navbar.js (fb29580)
+   • Frontend/src/pages/navbar.js — ndryshime në navigim (UI i vjetër HTML).
+
+4) Commit: Warehouses.html (2134eeb)
+   • Frontend/src/pages/Warehouses.html — korrigime gabimesh.
+
+
+────────────────────────────────────────────────────────────────────────────────
+B) 5 PRILL 2026
+────────────────────────────────────────────────────────────────────────────────
+
+5) Commit: Rregullime depo / API warehouse (086815f)
+   • Shtuar:
+     - Backend/data/warehouses.csv
+     - Backend/src/models/Warehouse.js
+     - Backend/src/repositories/WarehouseRepository.js
+     - Backend/src/routes/warehouseRoutes.js
+     - Backend/src/services/WarehouseService.js
+   • Ndryshuar: Backend/src/app.js (lidhje rrugësh API), Docs/sprint-plan.md
+
+6) Commit: PostgreSQL + Warehouse DB (430f7c5)
+   • Shtuar mbështetje për bazë të dhënash (DATABASE_URL) dhe repository:
+     - Backend/src/database.js (më vonë u zhvendos — shih poshtë)
+     - Backend/src/database/migrate.js
+     - Backend/src/database/schema.sql
+     - Backend/src/repositories/DatabaseRepository.js
+     - Backend/src/repositories/ProductDbRepository.js
+   • Ndryshuar: productRoutes.js (zgjedh CSV ose DB sipas mjedisit), package.json
+
+7) Commit: database.js në config (84684a1)
+   • Skedari i databazës u riemërtua/zhvendos:
+     Backend/src/database.js  →  Backend/src/config/database.js
+
+8) Commit: package.json + Warehouses.html (0fad0c3)
+   • Backend/package.json dhe package-lock — përditësime varësish / skripte.
+   • Backend/src/config/database.js — rregullime.
+   • Frontend/src/pages/Warehouses.html — përditësime.
+
+9) Commit: Ridesign i plotë frontend — „Neon Cyber Dashboard“ (6a4c82b)
+   • Shtuar aplikacion i ri React + Vite + TypeScript në folderin web/:
+     - UI futuristik (neon, glassmorphism, animacione), dark/light me localStorage.
+     - Komponentë: Card, Button, Input, Select, Modal, Skeleton, Sidebar, Topbar,
+       CyberBackground, AppLayout.
+     - Faqe: Dashboard, Produktet, Depo, Lëvizjet, Furnitorët, Porositë,
+       Klientët, Raportet.
+     - Chart.js për grafikë; kontekste Theme, Toast, Search; thirrje API / localStorage.
+   • Backend/src/app.js:
+     - Nëse ekziston web/dist/index.html, shërben SPA nga web/dist;
+     - përndryshe fallback te faqet HTML në Frontend/src/pages.
+
+10) Commit: Rregullime Render (c4e747b)
+    • Shtuar: render.yaml (Blueprint për Render — build + start).
+    • Backend/package.json — skripte build:client / render-build.
+    • web/index.html — skript i vogël për klasën „dark“ para ngarkimit (anti-flash).
+    • Rregullime të vogla TS/UI: DashboardPage, ReportsPage, WarehousesPage (web).
+
+11) Pas commit-it c4e747b (në workspace, për build në Render)
+    • Problemi: në Render, „npm install“ në modalitet production nuk instalon
+      devDependencies në web/, prandaj dështonte „tsc“ / Vite.
+    • Zgjidhja: në komandën e build për web përdoret:
+        npm install --include=dev
+      (e reflektuar në render.yaml dhe në skriptin build:client në Backend/package.json
+       nëse ke pull të fundit nga repo.)
+
+
+────────────────────────────────────────────────────────────────────────────────
+C) SKEDARË KRYESORË TË PREKUR (përmbledhje sipas zonës)
+────────────────────────────────────────────────────────────────────────────────
+
+Backend
+  • app.js — statik SPA + API
+  • package.json / package-lock.json — varësi, skripte build klienti & Render
+  • config/database.js, database/*, repositories/*, routes/*, services/*, models/*
+  • data/warehouses.csv
+  • tests/ProductService.test.js
+
+Frontend (HTML i vjetër — ende në repo)
+  • Frontend/src/pages/navbar.js, Warehouses.html
+
+web/ (React i ri)
+  • I gjithë projekti Vite (src/, public/, konfigurime)
+
+Dokumentacion
+  • Docs/sprint-plan.md
+
+Deploy
+  • render.yaml
+
+
+────────────────────────────────────────────────────────────────────────────────
+D) SI TË RIDEPLOY-OSH ME UI TË RI NË RENDER
+────────────────────────────────────────────────────────────────────────────────
+
+  • Root Directory: Backend
+  • Build Command (e plotë):
+      npm install && cd ../web && npm install --include=dev && npm run build
+  • Start Command:
+      npm start
+
+  Pa „--include=dev“, build-i i React zakonisht dështon në Render.
+
+
+================================================================================
+Fund dokumenti
+================================================================================

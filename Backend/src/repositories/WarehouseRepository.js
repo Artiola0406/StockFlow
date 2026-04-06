@@ -5,12 +5,25 @@ class WarehouseRepository extends FileRepository {
     super('warehouses.csv');
   }
 
+  getAll(filter) {
+    let warehouses = super.getAll();
+    if (filter && String(filter).trim() !== '') {
+      const f = String(filter).toLowerCase().trim();
+      warehouses = warehouses.filter(
+        (w) =>
+          (w.name || '').toLowerCase().includes(f) ||
+          (w.location || '').toLowerCase().includes(f)
+      );
+    }
+    return warehouses;
+  }
+
   getActive() {
-    return this.getAll().filter(w => w.isActive === 'true' || w.isActive === true);
+    return super.getAll().filter((w) => w.isActive === 'true' || w.isActive === true);
   }
 
   getByLocation(location) {
-    return this.getAll().filter(w =>
+    return super.getAll().filter((w) =>
       (w.location || '').toLowerCase().includes(location.toLowerCase())
     );
   }

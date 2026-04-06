@@ -1,14 +1,14 @@
 # Render Blueprint — ndërton SPA-në React në web/ para startit të Backend-it.
 # Në dashboard të Render: lidh repo-n dhe importo këtë file, OSE vendos manualisht:
 #   Root Directory: Backend
-#   Build Command:  npm install && cd ../web && npm install && npm run build
+#   Build Command:  npm install && cd ../web && npm install --include=dev && npm run build
 #   Start Command:  npm start
 
 services:
   - type: web
     name: stockflow
     rootDir: Backend
-    buildCommand: npm install && cd ../web && npm install && npm run build
+    buildCommand: npm install && cd ../web && npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
