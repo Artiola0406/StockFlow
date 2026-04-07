@@ -61,6 +61,26 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Users (JWT auth)
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'staf',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS login_logs (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255),
+  success BOOLEAN NOT NULL,
+  ip_address VARCHAR(100),
+  message VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Initial data: products
 INSERT INTO products (id, name, sku, price, quantity, category) VALUES
 ('1', 'Laptop Dell XPS', 'SKU-001', 999.99, 15, 'Elektronike'),

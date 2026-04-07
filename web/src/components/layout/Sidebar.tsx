@@ -11,20 +11,47 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  UserCog,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { motion } from 'framer-motion'
+import { useAuth } from '../../context/AuthContext'
 
 const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/products', label: 'Produktet', icon: Package },
-  { to: '/warehouses', label: 'Depo', icon: Warehouse },
-  { to: '/stockmovements', label: 'Lëvizjet', icon: ArrowLeftRight },
-  { to: '/suppliers', label: 'Furnitorët', icon: Truck },
-  { to: '/orders', label: 'Porositë', icon: ClipboardList },
-  { to: '/customers', label: 'Klientët', icon: Users },
-  { to: '/reports', label: 'Raportet', icon: BarChart3 },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, permission: 'dashboard' as const },
+  { to: '/products', label: 'Produktet', icon: Package, permission: 'products' as const },
+  { to: '/warehouses', label: 'Depo', icon: Warehouse, permission: 'warehouses' as const },
+  { to: '/stockmovements', label: 'Lëvizjet', icon: ArrowLeftRight, permission: 'stockmovements' as const },
+  { to: '/suppliers', label: 'Furnitorët', icon: Truck, permission: 'suppliers' as const },
+  { to: '/orders', label: 'Porositë', icon: ClipboardList, permission: 'orders' as const },
+  { to: '/customers', label: 'Klientët', icon: Users, permission: 'customers' as const },
+  { to: '/reports', label: 'Raportet', icon: BarChart3, permission: 'reports' as const },
+  { to: '/users', label: 'Përdoruesit', icon: UserCog, permission: 'users' as const },
 ]
+
+function initialsFromName(name: string) {
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function roleBadgeClass(role: string) {
+  if (role === 'administrator') {
+    return 'border border-cyan-500/30 bg-cyan-500/20 text-cyan-400'
+  }
+  if (role === 'menaxher') {
+    return 'border border-blue-500/30 bg-blue-500/20 text-blue-400'
+  }
+  return 'border border-violet-500/30 bg-violet-500/20 text-violet-400'
+}
+
+function roleLabel(role: string) {
+  if (role === 'administrator') return 'Administrator'
+  if (role === 'menaxher') return 'Menaxher'
+  return 'Staf'
+}
 
 function Aside({
   collapsed,
@@ -37,6 +64,9 @@ function Aside({
   onCollapsedChange: (v: boolean) => void
   showCollapseControl: boolean
 }) {
+  const { user, hasPermission, logout } = useAuth()
+  const visibleNav = nav.filter((item) => hasPermission(item.permission))
+
   return (
     <aside
       className={cn(
@@ -72,7 +102,7 @@ function Aside({
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {nav.map(({ to, label, icon: Icon, end }) => (
+        {visibleNav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -107,6 +137,51 @@ function Aside({
           </NavLink>
         ))}
       </nav>
+
+      {user && (
+        <div className="border-t border-cyan-500/10 p-3 dark:border-cyan-400/10">
+          <div
+            className={cn(
+              'flex items-center gap-3',
+              collapsed && 'flex-col justify-center gap-2',
+            )}
+          >
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-600/40 text-sm font-bold text-white ring-1 ring-white/20',
+              )}
+              title={user.name}
+            >
+              {initialsFromName(user.name)}
+            </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
+                <span
+                  className={cn(
+                    'mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                    roleBadgeClass(user.role),
+                  )}
+                >
+                  {roleLabel(user.role)}
+                </span>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => logout()}
+            title="Çkyçu"
+            className={cn(
+              'mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 py-2 text-xs font-semibold text-red-600 transition-all hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/10',
+              collapsed && 'mt-2 px-0',
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Çkyçu</span>}
+          </button>
+        </div>
+      )}
 
       {showCollapseControl && (
         <div className="border-t border-cyan-500/10 p-3 dark:border-cyan-400/10">

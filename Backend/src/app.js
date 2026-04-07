@@ -11,18 +11,22 @@ const supplierRoutes = require('./routes/supplierRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
+const authRoutes = require('./routes/authRoutes');
+const { requirePermission } = require('./middlewares/authMiddleware');
 
 const app = express();
 
+app.set('trust proxy', 1);
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-app.use('/api/products', productRoutes);
-app.use('/api/warehouses', warehouseRoutes);
-app.use('/api/suppliers', supplierRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/stockmovements', stockMovementRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/products', ...requirePermission('products'), productRoutes);
+app.use('/api/warehouses', ...requirePermission('warehouses'), warehouseRoutes);
+app.use('/api/suppliers', ...requirePermission('suppliers'), supplierRoutes);
+app.use('/api/customers', ...requirePermission('customers'), customerRoutes);
+app.use('/api/orders', ...requirePermission('orders'), orderRoutes);
+app.use('/api/stockmovements', ...requirePermission('stockmovements'), stockMovementRoutes);
 
 const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
 const webDist = path.join(__dirname, '../../web/dist');
