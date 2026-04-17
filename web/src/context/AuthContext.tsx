@@ -5,6 +5,7 @@ export interface User {
   name: string
   email: string
   role: 'administrator' | 'menaxher' | 'staf'
+  permissions: string[]
 }
 
 interface AuthContextType {
@@ -14,31 +15,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   hasPermission: (page: string) => boolean
+  refreshUser: () => Promise<void>
 }
 
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  administrator: [
-    'dashboard',
-    'products',
-    'warehouses',
-    'stockmovements',
-    'suppliers',
-    'orders',
-    'customers',
-    'reports',
-    'users',
-  ],
-  menaxher: [
-    'dashboard',
-    'products',
-    'warehouses',
-    'orders',
-    'suppliers',
-    'reports',
-    'customers',
-  ],
-  staf: ['dashboard', 'stockmovements', 'products'],
-}
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
@@ -47,19 +26,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('stockflow_token')
-    const savedUser = localStorage.getItem('stockflow_user')
-    if (savedToken && savedUser) {
-      setToken(savedToken)
-      try {
-        setUser(JSON.parse(savedUser) as User)
-      } catch {
-        localStorage.removeItem('stockflow_token')
-        localStorage.removeItem('stockflow_user')
-      }
+  const refreshUser = async () => {
+    const token = localStorage.getItem('stockflow_token')
+    if (!token) {
+      setUser(null)
+      setToken(null)
+      setIsLoading(false)
+      return
     }
-    setIsLoading(false)
+
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('stockflow_token')
+          localStorage.removeItem('stockflow_user')
+          setToken(null)
+          setUser(null)
+          window.location.href = '/login'
+          return
+        }
+        throw new Error('Failed to fetch user data')
+      }
+
+      const result = await response.json()
+      if (result.success) {
+        const userData = result.data
+        setUser({
+          id: userData.id.toString(),
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          permissions: userData.permissions || []
+        })
+        setToken(token)
+        localStorage.setItem('stockflow_user', JSON.stringify({
+          id: userData.id.toString(),
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          permissions: userData.permissions || []
+        }))
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error)
+      localStorage.removeItem('stockflow_token')
+      localStorage.removeItem('stockflow_user')
+      setToken(null)
+      setUser(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshUser()
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -68,12 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
+    
+    if (!res.ok) {
+      const errorData = await res.json()
+      throw new Error(errorData.message || 'Login failed')
+    }
+    
     const data = await res.json()
     if (!data.success) throw new Error(data.message)
+    
     setToken(data.token)
-    setUser(data.user)
     localStorage.setItem('stockflow_token', data.token)
-    localStorage.setItem('stockflow_user', JSON.stringify(data.user))
+    
+    // Fetch user data with permissions
+    await refreshUser()
   }
 
   const logout = () => {
@@ -85,12 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const hasPermission = (page: string): boolean => {
-    if (!user) return false
-    return ROLE_PERMISSIONS[user.role]?.includes(page) ?? false
+    if (!user || !user.permissions) return false
+    return user.permissions.includes(page)
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, hasPermission }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, hasPermission, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

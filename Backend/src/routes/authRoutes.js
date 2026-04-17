@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
-const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/auth');
+const { JWT_SECRET, JWT_EXPIRES_IN, ROLE_PERMISSIONS } = require('../config/auth');
 const { authenticate } = require('../middlewares/authMiddleware');
 
 router.post('/login', async (req, res) => {
@@ -93,7 +93,17 @@ router.get('/me', authenticate, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Useri nuk u gjet.' });
     }
-    res.json({ success: true, data: result.rows[0] });
+    
+    const user = result.rows[0];
+    const permissions = ROLE_PERMISSIONS[user.role] || [];
+    
+    res.json({ 
+      success: true, 
+      data: {
+        ...user,
+        permissions
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

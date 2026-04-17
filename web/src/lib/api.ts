@@ -20,41 +20,99 @@ function clearSessionAndRedirect() {
   window.location.href = '/login'
 }
 
-async function handleJson<T>(res: Response): Promise<T> {
+function getErrorMessage(status: number, fallbackMessage: string): string {
+  switch (status) {
+    case 401:
+      return 'Session expired, please log in again'
+    case 403:
+      return "You don't have permission to perform this action"
+    case 404:
+      return 'Resource not found'
+    case 500:
+      return 'Server error, please try again later'
+    default:
+      return fallbackMessage
+  }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  // Handle 401 unauthorized
   if (res.status === 401) {
     clearSessionAndRedirect()
-    throw new Error('Sesioni skadoi')
+    throw new Error('Session expired, please log in again')
   }
-  return res.json() as Promise<T>
+
+  // Check if response is ok
+  if (!res.ok) {
+    let errorMessage = getErrorMessage(res.status, 'Request failed')
+    
+    try {
+      // Try to parse error response as JSON
+      const errorData = await res.json()
+      if (errorData.message) {
+        errorMessage = errorData.message
+      }
+    } catch {
+      // If JSON parsing fails, try to get text response
+      try {
+        const textResponse = await res.text()
+        if (textResponse) {
+          errorMessage = `${errorMessage}: ${textResponse.substring(0, 100)}`
+        }
+      } catch {
+        // If both JSON and text fail, use default error message
+      }
+    }
+    
+    throw new Error(errorMessage)
+  }
+
+  // For successful responses, try to parse JSON
+  try {
+    return await res.json()
+  } catch (error) {
+    // If JSON parsing fails on success response, return empty object
+    return {} as T
+  }
+}
+
+async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
+  try {
+    const res = await fetch(url, {
+      headers: authHeaders(),
+      ...options,
+    })
+    return await handleResponse<T>(res)
+  } catch (error) {
+    if (error instanceof Error) {
+      // Re-throw errors from handleResponse
+      throw error
+    }
+    // Handle network failures
+    throw new Error('Cannot reach server, check your connection')
+  }
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${base}${path}`, { headers: authHeaders() })
-  return handleJson<T>(res)
+  return apiCall<T>(`${base}${path}`)
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${base}${path}`, {
+  return apiCall<T>(`${base}${path}`, {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(body),
   })
-  return handleJson<T>(res)
 }
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${base}${path}`, {
+  return apiCall<T>(`${base}${path}`, {
     method: 'PUT',
-    headers: authHeaders(),
     body: JSON.stringify(body),
   })
-  return handleJson<T>(res)
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
-  const res = await fetch(`${base}${path}`, {
+  return apiCall<T>(`${base}${path}`, {
     method: 'DELETE',
-    headers: authHeaders(),
   })
-  return handleJson<T>(res)
 }

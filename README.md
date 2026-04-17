@@ -8,66 +8,155 @@
 
 </div>
 
-# 📦 StockFlow — Sistem i Menaxhimit të Inventarit
+#  StockFlow - Sistem i Menaxhimit të Inventarit
 
 <p align="center">
-  <strong>Një zgjidhje e avancuar web për menaxhimin e stokut në kohë reale, me shumë depo dhe inteligjencë artificiale për parashikimin e porosive.</strong>
+  <strong>Një sistem web për menaxhimin e inventarit me React, Node.js dhe PostgreSQL.</strong>
 </p>
 
 <br>
 
-📖 Përshkrimi i Projektit
+  Përshkrimi i Projektit
 
-StockFlow është një sistem i avancuar i menaxhimit të inventarit i ndërtuar si aplikacion web i plotë me React.js, Node.js dhe PostgreSQL. Sistemi është dizajnuar për biznese që operojnë me shumë depo dhe kërkojnë kontroll të saktë në kohë reale mbi mallrat, porositë dhe financat.
+StockFlow është një sistem i menaxhimit të inventarit i ndërtuar si aplikacion web me React.js, Node.js dhe PostgreSQL. Sistemi ofron menaxhim të produkteve, depove, lëvizjeve të stokut, furnitorëve, porosive dhe klientëve me kontroll bazuar në role.
 
-Sistemi mbulon ciklin e plotë të jetës së një produkti — nga furnizimi nga furnitorët, pranimi dhe ruajtja në depo, lëvizjet ndërmjet depove, deri te shitja tek klientët dhe gjenerimi i faturave dhe pagesave. Çdo veprim regjistrohet automatikisht përmes një sistemi auditimi. Sistemi mbështet multi-warehouse, kontroll stoku në nivel të detajuar, dhe njoftime automatike kur produktet bien nën nivelin minimal. Përfshin edhe një modul AI të quajtur Smart Restock Prediction që analizon historikun e shitjeve dhe sugjeron automatikisht kur dhe sa produkte duhet të porositen.
-
-Sistemi ka role të ndryshme: Administrator, Menaxher dhe Staf, me akses të kontrolluar përmes JWT autentifikimit. Arkitektura ndjek Clean Architecture dhe Repository Pattern me 30 klasa të ndara në 5 module.
+Sistemi ndjek Clean Architecture me Repository Pattern, duke ofruar ndarje të qartë midis shtresave të biznesit, aksesit të të dhënave dhe prezantimit. Përfshin autentifikim JWT me tre role (Administrator, Menaxher, Staf) dhe kontroll të detajuar të aksesit.
 
 <br>
 
-🛠 Teknologjitë e Përdorura
+  Teknologjitë e Përdorura
 
 | Sektori            | Teknologjitë               |
 | ------------------ | -------------------------- |
-| 🎨 Frontend        | ⚛️ React · 🎨 Tailwind CSS |
-| ⚙️ Backend         | 🟢 Node.js · ⚡ Express.js  |
-| 🗄️ Database       | 🐘 PostgreSQL              |
-| 🔧 Version Control | 🐙 Git                     |
+|   Frontend        |  React · TypeScript · Tailwind CSS |
+|   Backend         |  Node.js · Express.js  |
+|  Database       |  PostgreSQL (me CSV fallback)              |
+|  Version Control |  Git                     |
 
 <br>
 
-✨ Funksionalitetet Kryesore
+  Funksionalitetet Kryesore
 
-* 🔐 Autentifikim i Sigurt: JWT dhe 3 role të ndryshme (Admin, Menaxher, Staf)
-* 📦 Menaxhim Produktesh: Menaxhim i detajuar me kategori, çmime dinamike dhe historik kostoje
-* 🏢 Multi-Warehouse: Kontroll i saktë i stokut në shumë depo njëkohësisht
-* 🔄 Lëvizjet e Stokut: Regjistrim i hyrjeve, daljeve, transfereve dhe rregullimeve manuale
-* 📑 Menaxhim Furnitorësh dhe Porosish Blerje
-* 💰 Menaxhim Shitjesh: Porosi, fatura dhe pagesa
-* 🔔 Njoftime Automatike për stok minimal
-* 🤖 Smart Restock Prediction
-* 📊 Dashboard Interaktiv me statistika në kohë reale
+*  Autentifikim i Sigurt: JWT dhe 3 role të ndryshme (Administrator, Menaxher, Staf)
+*  Menaxhim Produktesh: Menaxhim i detajuar me kategori dhe çmime
+*  Multi-Warehouse: Kontroll i stokut në shumë depo
+*  Lëvizjet e Stokut: Regjistrim i hyrjeve, daljeve dhe transfereve
+*  Menaxhim Furnitorësh dhe Klientësh
+*  Menaxhim Porosish: Porosi blerje dhe shitje
+*  Dashboard me statistika bazë
+*  Kontroll i aksesit bazuar në role
 
 <br>
 
-🧱 Modulet e Sistemit
+  Planifikuar për të Ardhmen (Jo i implementuar)
 
-| Moduli          | Përshkrimi                              | Klasat Kryesore                                                   |
-| :-------------- | :-------------------------------------- | :---------------------------------------------------------------- |
-| Siguria         | Menaxhon autentifikimin dhe autorizimin | User, Role, AuthToken, AuditLog, Notification                     |
-| Inventari       | Produkte dhe stok                       | Product, Category, Warehouse, WarehouseStock                      |
-| Lëvizjet        | Lëvizjet e stokut                       | StockMovement, StockTransfer, TransferItem, StockAdjustment       |
-| Financat        | Shitje dhe pagesa                       | Supplier, PurchaseOrder, SalesOrder, Invoice, Payment             |
-| AI & Repository | Analitika dhe pattern                   | IRepository, FileRepository, ProductRepository, RestockPrediction |
+*  Smart Restock Prediction (AI-powered)
+*  Sistem i plotë faturash dhe pagesash
+*  Audit logging i detajuar
+*  Njoftime automatike për stok minimal
+*  Raporte të avancuara
 
+<br>
 
-👩‍💻 Autori
+##  Getting Started (Nisja e Shpejtë)
+
+### Kërkesat e Sistemit
+- Node.js 16+
+- PostgreSQL 12+ (opsionale, përdoret CSV si fallback)
+- npm ose yarn
+
+### Instalimi dhe Konfigurimi
+
+1. **Klononi projektin**
+```bash
+git clone https://github.com/Artiola0406/StockFlow.git
+cd StockFlow
+```
+
+2. **Instaloni varësitë e backend**
+```bash
+cd Backend
+npm install
+```
+
+3. **Konfiguroni databazën**
+```bash
+# Opsioni 1: PostgreSQL (rekomanduar)
+# Vendosni DATABASE_URL në .env
+DATABASE_URL=postgresql://username:password@localhost:5432/stockflow
+
+# Opsioni 2: CSV fallback (përdoret automatikisht pa DATABASE_URL)
+```
+
+4. **Krijoni tabelat (nëse përdorni PostgreSQL)**
+```bash
+# Ekzekutoni skriptet në Database/ folder
+psql -d stockflow -f Database/schema.sql
+```
+
+5. **Nisni backend**
+```bash
+cd Backend
+npm start
+# Ose për development:
+npm run dev
+```
+
+6. **Instaloni dhe nisni frontend**
+```bash
+cd web
+npm install
+npm run dev
+```
+
+7. **Hapni aplikacionin**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3000
+
+### Variablat e Mjedisit (Environment Variables)
+
+**Backend (.env)**
+```bash
+DATABASE_URL=postgresql://username:password@localhost:5432/stockflow
+JWT_SECRET=your-secret-key-here
+PORT=3000
+NODE_ENV=development
+```
+
+**Frontend (.env)**
+```bash
+VITE_API_URL=http://localhost:3000
+```
+
+### Struktura e Projektit
+
+```bash
+StockFlow/
+  Backend/                    - Node.js API server
+    src/
+      config/                - Konfigurimi (auth, database)
+      routes/                - API endpoints
+      services/              - Biznes logic
+      repositories/          - Data access layer
+      middlewares/           - Express middleware
+  web/                       - React frontend (zyrtare)
+    src/
+      components/            - React components
+      context/              - Auth context
+      lib/                  - API client
+      pages/                - Faqet e aplikacionit
+  Database/                  - SQL schema files
+  Docs/                      - Dokumentimi
+```
+
+<br>
+
+  Autori
 
 |              |                                                                  |
 | :----------- | :--------------------------------------------------------------- |
 | Emri         | Artiola Qollaku                                                  |
-| Universiteti | Universiteti "Isa Boletini" — Mitrovicë                          |
+| Universiteti | Universiteti "Isa Boletini" - Mitrovicë                          |
 | Fakulteti    | Fakulteti i Inxhinierisë Kompjuterike                            |
 | Lënda        | Inxhinieri Softuerike                                            |
 | GitHub       | [https://github.com/Artiola0406](https://github.com/Artiola0406) |
@@ -75,5 +164,4 @@ Sistemi ka role të ndryshme: Administrator, Menaxher dhe Staf, me akses të kon
 
 <br>
 
-
-© 2026 Artiola Qollaku. Ky projekt është krijuar për qëllime akademike si pjesë e lëndës Inxhinieri Softuerike.
+ 2026 Artiola Qollaku. Ky projekt është krijuar për qëllime akademike si pjesë e lëndës Inxhinieri Softuerike.
