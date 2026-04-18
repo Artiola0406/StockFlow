@@ -19,7 +19,7 @@ Kyçja me email/fjalëkalim, menaxhimi CRUD i entiteteve kryesore përmes API-s�
 
 2. **Autentifikimi dhe autorizimi janë të lidhura me rolin** — Middleware `authenticate` + `requirePermission('products' | 'orders' | ...)` në `app.js` e mbroj API-n në nivel endpoint-esh, dhe në frontend `ProtectedRoute` + `hasPermission` e përputhin këtë logjikë me faqet.
 
-3. **Ka teste të synuara për një shërbim kritik** — `Backend/tests/ProductService.test.js` përdor një repository mock dhe teston raste si input i pavlefshëm (emër bosh, çmim 0, etj.), që është një hap i mirë për besueshmërinë e logjikës së produkteve.
+3. **Ka teste të synuara për një shërbim kritik** — `Backend/tests/ProductService.test.js` përdor një repository mock dhe teston raste si input i pavlefshëm (emër bosh, çmim 0, etj.). Kjo është fillim i mirë, por ndërgjegjësohem që mbulimi është shumë i kufizuar.
 
 ---
 
@@ -62,4 +62,4 @@ Kyçja me email/fjalëkalim, menaxhimi CRUD i entiteteve kryesore përmes API-s�
 
 ## 5. Një pjesë që ende nuk e kuptoj plotësisht
 
-Më e paqartë për mua është **si sillet sistemi kur `DATABASE_URL` mungon** në praktikë për të gjitha modulët. Shoh që `productRoutes` ndërton `ProductService` me repo të ndryshëm sipas env, por login dhe përdoruesit duken të lidhur fort me PostgreSQL (`pool.query`). Nëse dikush nis projektin “pa DB”, nuk jam 100% i sigurt se çfarë funksionon ende dhe çfarë thyhet menjëherë — dhe kjo më bën të dyshoj se cili është “happy path” i dokumentuar për setup lokal.
+Kur fillova të shikoj si funksionon sistemi pa `DATABASE_URL`, u ngatërrova menjëherë. Pashë që produktet mund të punojnë me CSV, por përdoruesit dhe login duket se kanë nevojë për PostgreSQL. Nëse dikush nis projektin pa database, nuk jam i sigurt se cili funksionon dhe cili thyet menjëherë. Do të provoja ta nisja projektin pa DATABASE_URL dhe të shikoja çfarë ndodh për të kuptuar më mirë "happy path" e setup lokal.

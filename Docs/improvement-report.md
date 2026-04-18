@@ -109,6 +109,8 @@ Ky dokument përshkruan tre përmirësime kryesore të implementuara në projekt
 - **Honesty**: Vetëm features e implementuara përshkruhen si të disponueshme
 - **Onboarding**: Udhëzues të qartë për setup lokal
 
+Gjatë rishkrimit të dokumentimit, kuptova se sa shpesh kisha punuar me supozime për strukturën e projektit pa e kontrolluar vërtet kodin. Kur shkruva diagramin Mermaid për data flow, vëreva një bug të vogël në flow i cili nuk ishte i dukshëm më parë.
+
 ---
 
 ## 4. Pika të Dobëta që Mbetën në Projekt
@@ -147,26 +149,10 @@ Ky dokument përshkruan tre përmirësime kryesore të implementuara në projekt
 
 ## 5. Impact i Përmirësimeve
 
-### Metrics para/pas:
-- **Stabiliteti**: 70% -> 95% (me error handling)
-- **Siguria**: 80% -> 95% (me centralized permissions)
-- **Documentation Quality**: 40% -> 90% (me accurate docs)
-- **Developer Experience**: 60% -> 85% (me clear architecture)
-
-### Benefits afat-shkurtër:
-- Më pak crashes në production
-- Zhvillim më i shpejtë me dokumentim të saktë
-- Menaxhim më i lehtë i permissions
-
-### Benefits afat-gjatë:
-- Arkitekturë më të qëndrueshme
-- Mirëmbajtje më të lehtë
-- Onboarding më i shpejtë për zhvilluesit e rinj
+Para këtij ndryshimi, aplikacioni mund të prishej pa asnjë mesazh të qartë. Tani gabimet janë të kuptueshme dhe të parashikueshme. Përdoruesit marrin informacion konkret për çfarë shkoi keq, në vend të mesazheve të përgjithshëm që nuk ndihmojnë në debug. Në anën tjetër, dokumentimi i saktë do të kursisë orë të tëra zhvilluesve të rinj që përpiqen të kuptojnë strukturën e projektit.
 
 ---
 
 ## Konkluzioni
 
-Tri përmirësimet e implementuara kanë rritur ndjeshëm cilinësinë, stabilitetin dhe mirëmbajtjen e projektit StockFlow. Megjithëse mbeten akoma zona për përmirësime (veçanërisht në testing dhe logging), themeli tani është shumë më i fortë për zhvillimin e ardhshëm.
-
-**Rekomandimi për të ardhmen**: Fokusohuni në shtimin e testimeve automatike dhe përmirësimin e error logging për të arritur nivelin e ardhshëm të maturisë së projekt.
+Pjesa më e vështirë ishte të kuptoja se cili ishte problemi i vërtetë me permissions - fillimisht mendova se ishte vetëm një bug i vogël, por më vonë u bë e qartë se ishte një problem strukturor. Nëse do të filloja përsëri, do të kisha filluar me dokumentimin - do të kisha shkruar arkitekturën aktuale përpara se të ndryshoja ndonjë gjë. Akoma nuk jam plotësisht i sigurt se si do të trajtoja CSV fallback në një sistem më të madh, por për projektin tim aktual, kjo zgjidh funksionon mirë. Do të thosha se këto ndryshime më bënë të kuptoj se sa e rëndësishme është të kesh një "single source of truth" për gjëra si permissions dhe dokumentim.
