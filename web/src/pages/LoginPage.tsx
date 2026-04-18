@@ -179,21 +179,33 @@ export function LoginPage() {
             </p>
             <ul className="space-y-2 text-xs text-slate-400">
               <li>
-                <span className="text-[#22d3ee]">Administrator:</span>{' '}
+                <span className="text-yellow-400">Super Admin:</span>{' '}
                 <span className="font-mono text-slate-300">admin@stockflow.com</span> /{' '}
                 <span className="font-mono text-slate-300">Admin123!</span>
               </li>
               <li>
-                <span className="text-[#38bdf8]">Menaxher:</span>{' '}
+                <span className="text-[#38bdf8]">Demo Manager:</span>{' '}
                 <span className="font-mono text-slate-300">menaxher@stockflow.com</span> /{' '}
                 <span className="font-mono text-slate-300">Menaxher123!</span>
               </li>
               <li>
-                <span className="text-[#a78bfa]">Staf:</span>{' '}
+                <span className="text-[#a78bfa]">Demo Staff:</span>{' '}
                 <span className="font-mono text-slate-300">staf@stockflow.com</span> /{' '}
                 <span className="font-mono text-slate-300">Staf123!</span>
               </li>
             </ul>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-[#94a3b8]">
+              Nuk keni llogari?{' '}
+              <a
+                href="/register"
+                className="font-semibold text-[#22d3ee] transition-colors hover:text-[#06b6d4]"
+              >
+                Regjistrohu falas
+              </a>
+            </p>
           </div>
         </div>
       </div>

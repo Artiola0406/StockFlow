@@ -28,6 +28,7 @@ const nav = [
   { to: '/customers', label: 'Klientët', icon: Users, permission: 'customers' as const },
   { to: '/reports', label: 'Raportet', icon: BarChart3, permission: 'reports' as const },
   { to: '/users', label: 'Përdoruesit', icon: UserCog, permission: 'users' as const },
+  { to: '/tenants', label: 'Tenants', icon: Users, permission: 'tenants' as const },
 ]
 
 function initialsFromName(name: string) {
@@ -37,20 +38,20 @@ function initialsFromName(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-function roleBadgeClass(role: string) {
-  if (role === 'administrator') {
-    return 'border border-cyan-500/30 bg-cyan-500/20 text-cyan-400'
+function roleBadgeClass(user_role: string) {
+  if (user_role === 'super_admin') {
+    return 'border border-yellow-500/30 bg-yellow-500/20 text-yellow-400'
   }
-  if (role === 'menaxher') {
-    return 'border border-blue-500/30 bg-blue-500/20 text-blue-400'
+  if (user_role === 'manager') {
+    return 'border border-cyan-500/30 bg-cyan-500/20 text-cyan-400'
   }
   return 'border border-violet-500/30 bg-violet-500/20 text-violet-400'
 }
 
-function roleLabel(role: string) {
-  if (role === 'administrator') return 'Administrator'
-  if (role === 'menaxher') return 'Menaxher'
-  return 'Staf'
+function roleLabel(user_role: string) {
+  if (user_role === 'super_admin') return 'Super Admin'
+  if (user_role === 'manager') return 'Manager'
+  return 'Staff'
 }
 
 function Aside({
@@ -66,6 +67,11 @@ function Aside({
 }) {
   const { user, hasPermission, logout } = useAuth()
   const visibleNav = nav.filter((item) => hasPermission(item.permission))
+  
+  // Filter out Tenants menu for non-super_admin users
+  const filteredNav = visibleNav.filter(item => 
+    item.permission !== 'tenants' || user?.user_role === 'super_admin'
+  )
 
   return (
     <aside
@@ -95,14 +101,14 @@ function Aside({
               StockFlow
             </div>
             <div className="truncate text-[11px] font-medium uppercase tracking-wider text-cyan-600/90 dark:text-cyan-300/90">
-              Neural Inventory
+              {user?.tenant_name || 'Neural Inventory'}
             </div>
           </motion.div>
         )}
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-        {visibleNav.map(({ to, label, icon: Icon, end }) => (
+        {filteredNav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -160,10 +166,10 @@ function Aside({
                 <span
                   className={cn(
                     'mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                    roleBadgeClass(user.role),
+                    roleBadgeClass(user.user_role || 'staff'),
                   )}
                 >
-                  {roleLabel(user.role)}
+                  {roleLabel(user.user_role || 'staff')}
                 </span>
               </div>
             )}

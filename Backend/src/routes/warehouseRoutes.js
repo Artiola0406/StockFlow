@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middlewares/authMiddleware');
+const { tenantFilter } = require('../middlewares/tenantMiddleware');
+const pool = require('../config/database');
+
+// Apply auth + tenant filter to ALL routes
+router.use(authenticate, tenantFilter);
 
 const useDatabase = process.env.DATABASE_URL ? true : false;
 
@@ -17,64 +23,142 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    const warehouses = await service.getAllWarehouses(req.query.filter);
-    res.json({ success: true, data: warehouses });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    let query = 'SELECT * FROM warehouses';
+    const params = [];
+
+    if (req.tenantId) {
+      query += ' WHERE tenant_id = $1';
+      params.push(req.tenantId);
+    }
+
+    query += ' ORDER BY created_at DESC';
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/stats', async (req, res) => {
   try {
-    const stats = await service.getStatistics();
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    let query = 'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = true) as active FROM warehouses';
+    const params = [];
+
+    if (req.tenantId) {
+      query += ' WHERE tenant_id = $1';
+      params.push(req.tenantId);
+    }
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/active', async (req, res) => {
   try {
-    const items = await service.getActiveWarehouses();
-    res.json({ success: true, data: items });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    let query = 'SELECT * FROM warehouses WHERE is_active = true';
+    const params = [];
+
+    if (req.tenantId) {
+      query += ' AND tenant_id = $1';
+      params.push(req.tenantId);
+    }
+
+    query += ' ORDER BY name';
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    const warehouse = await service.getWarehouseById(req.params.id);
-    res.json({ success: true, data: warehouse });
-  } catch (error) {
-    res.status(404).json({ success: false, message: error.message });
+    let query = 'SELECT * FROM warehouses WHERE id = $1';
+    const params = [req.params.id];
+
+    if (req.tenantId) {
+      query += ' AND tenant_id = $2';
+      params.push(req.tenantId);
+    }
+
+    const result = await pool.query(query, params);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Depoja nuk u gjet.' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.post('/', async (req, res) => {
   try {
-    const warehouse = await service.addWarehouse(req.body);
-    res.status(201).json({ success: true, data: warehouse });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    const { name, location, is_active } = req.body;
+
+    if (!name) return res.status(400).json({
+      success: false,
+      message: 'Emri i deposë është i detyrueshëm.'
+    });
+
+    const id = Date.now().toString();
+    const tenantId = req.tenantId || req.user.tenant_id;
+
+    const result = await pool.query(
+      `INSERT INTO warehouses (id, name, location, is_active, tenant_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [id, name, location || 'E pacaktuar', is_active !== false, tenantId]
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.put('/:id', async (req, res) => {
   try {
-    const warehouse = await service.updateWarehouse(req.params.id, req.body);
-    res.json({ success: true, data: warehouse });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    const existing = await pool.query(
+      'SELECT * FROM warehouses WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, req.tenantId]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Depoja nuk u gjet.'
+      });
+    }
+
+    const { name, location, is_active } = req.body;
+    const result = await pool.query(
+      `UPDATE warehouses SET name=$1, location=$2, is_active=$3
+       WHERE id=$4 AND tenant_id=$5 RETURNING *`,
+      [name, location, is_active, req.params.id, req.tenantId]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.delete('/:id', async (req, res) => {
   try {
-    await service.deleteWarehouse(req.params.id);
-    res.json({ success: true, message: 'Depoja u fshi me sukses' });
-  } catch (error) {
-    res.status(404).json({ success: false, message: error.message });
+    const result = await pool.query(
+      'DELETE FROM warehouses WHERE id = $1 AND tenant_id = $2 RETURNING id',
+      [req.params.id, req.tenantId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Depoja nuk u gjet.'
+      });
+    }
+    res.json({ success: true, message: 'Depoja u fshi.' });
+  } catch (err) {
+    res.status(404).json({ success: false, message: err.message });
   }
 });
 

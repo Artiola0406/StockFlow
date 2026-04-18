@@ -4,7 +4,9 @@ export interface User {
   id: string
   name: string
   email: string
-  role: 'administrator' | 'menaxher' | 'staf'
+  role: string
+  user_role: 'super_admin' | 'manager' | 'staff'
+  tenant_id: string | null
   permissions: string[]
 }
 
@@ -63,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: userData.name,
           email: userData.email,
           role: userData.role,
+          user_role: userData.user_role || 'staff',
+          tenant_id: userData.tenant_id || null,
           permissions: userData.permissions || []
         })
         setToken(token)
@@ -71,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: userData.name,
           email: userData.email,
           role: userData.role,
+          user_role: userData.user_role || 'staff',
+          tenant_id: userData.tenant_id || null,
           permissions: userData.permissions || []
         }))
       }
@@ -119,9 +125,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/login'
   }
 
+  const ROLE_PERMISSIONS: Record<string, string[]> = {
+    super_admin: ['dashboard','products','warehouses','stockmovements',
+      'suppliers','orders','customers','reports','users','tenants'],
+    manager: ['dashboard','products','warehouses','suppliers',
+      'orders','customers','reports','stockmovements'],
+    staff: ['dashboard','products','stockmovements']
+  }
+
   const hasPermission = (page: string): boolean => {
-    if (!user || !user.permissions) return false
-    return user.permissions.includes(page)
+    if (!user) return false
+    const userRole = user.user_role || 'staff'
+    if (userRole === 'super_admin') return true
+    return ROLE_PERMISSIONS[userRole]?.includes(page) ?? false
   }
 
   return (

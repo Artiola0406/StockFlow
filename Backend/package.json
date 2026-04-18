@@ -7,7 +7,7 @@
   "migrate": "node src/database/migrate.js",
   "seed:users": "node src/database/seedUsers.js",
   "setup": "npm run migrate && npm run seed:users"
-}
+},
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",

@@ -76,10 +76,17 @@ async function handleResponse<T>(res: Response): Promise<T> {
   }
 }
 
-async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
+async function apiCall<T>(url: string, options?: RequestInit, tenantId?: string): Promise<T> {
   try {
+    const headers = authHeaders()
+    
+    // For super admin viewing specific tenant data
+    if (tenantId) {
+      headers['x-tenant-id'] = tenantId
+    }
+    
     const res = await fetch(url, {
-      headers: authHeaders(),
+      headers,
       ...options,
     })
     return await handleResponse<T>(res)
@@ -93,26 +100,26 @@ async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  return apiCall<T>(`${base}${path}`)
+export async function apiGet<T>(path: string, tenantId?: string): Promise<T> {
+  return apiCall<T>(`${base}${path}`, undefined, tenantId)
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, tenantId?: string): Promise<T> {
   return apiCall<T>(`${base}${path}`, {
     method: 'POST',
     body: JSON.stringify(body),
-  })
+  }, tenantId)
 }
 
-export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+export async function apiPut<T>(path: string, body: unknown, tenantId?: string): Promise<T> {
   return apiCall<T>(`${base}${path}`, {
     method: 'PUT',
     body: JSON.stringify(body),
-  })
+  }, tenantId)
 }
 
-export async function apiDelete<T>(path: string): Promise<T> {
+export async function apiDelete<T>(path: string, tenantId?: string): Promise<T> {
   return apiCall<T>(`${base}${path}`, {
     method: 'DELETE',
-  })
+  }, tenantId)
 }

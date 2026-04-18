@@ -1,32 +1,19 @@
 module.exports = {
-  JWT_SECRET: process.env.JWT_SECRET || 'stockflow-secret-key-2026',
+  JWT_SECRET: process.env.JWT_SECRET || 'stockflow-secret-2026',
   JWT_EXPIRES_IN: '24h',
   ROLES: {
-    ADMIN: 'administrator',
-    MANAGER: 'menaxher',
-    STAFF: 'staf',
+    SUPER_ADMIN: 'super_admin',
+    MANAGER: 'manager',
+    STAFF: 'staff',
   },
   ROLE_PERMISSIONS: {
-    administrator: [
-      'dashboard',
-      'products',
-      'warehouses',
-      'stockmovements',
-      'suppliers',
-      'orders',
-      'customers',
-      'reports',
-      'users',
+    super_admin: ['*'], // access to everything across all tenants
+    manager: [
+      'dashboard', 'products', 'warehouses', 'suppliers',
+      'orders', 'customers', 'reports', 'stockmovements'
     ],
-    menaxher: [
-      'dashboard',
-      'products',
-      'warehouses',
-      'orders',
-      'suppliers',
-      'reports',
-      'customers',
-    ],
-    staf: ['dashboard', 'stockmovements', 'products'],
+    staff: [
+      'dashboard', 'products', 'stockmovements'
+    ]
   },
 };
