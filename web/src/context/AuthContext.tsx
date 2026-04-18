@@ -1,15 +1,15 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 
-export interface User {
-  id: string
-  name: string
-  email: string
-  role: string
-  user_role: 'super_admin' | 'manager' | 'staff'
-  tenant_id: string | null
-  permissions: string[]
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  user_role: 'super_admin' | 'manager' | 'staff';
+  tenant_id: string | null;
+  tenant_name?: string;
+  permissions?: string[];
 }
-
 interface AuthContextType {
   user: User | null
   token: string | null
