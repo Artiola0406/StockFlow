@@ -8,7 +8,7 @@
   "seed:users": "node src/database/seedUsers.js",
   "setup": "npm run migrate && npm run seed:users"
 },
-  "dependencies": {
+"dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
