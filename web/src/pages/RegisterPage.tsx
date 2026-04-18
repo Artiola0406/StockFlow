@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import { Package, Eye, EyeOff, AlertCircle, Loader2, Building2, User, Mail, Lock } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useNavigate, Link } from 'react-router-dom'
+import { Package, Eye, EyeOff, AlertCircle, Loader2, User, Mail, Building, Lock } from 'lucide-react'
 import { cn } from '../lib/cn'
 
 export function RegisterPage() {
-  const { user, isLoading: authLoading, login } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,32 +15,30 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#030712]">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#22d3ee] border-t-transparent" />
-      </div>
-    )
-  }
-
-  if (user) return <Navigate to="/" replace />
-
   const validateForm = () => {
-    if (!name || !email || !password || !confirmPassword || !businessName) {
-      setError('Të gjitha fushat janë të detyrueshme')
+    if (!name?.trim()) {
+      setError('Emri është i detyrueshëm')
       return false
     }
-    if (password.length < 8) {
-      setError('Fjalëkalimi duhet të ketë të paktën 8 karaktere')
-      return false
-    }
-    if (password !== confirmPassword) {
-      setError('Fjalëkalimet nuk përputhen')
+    if (!email?.trim()) {
+      setError('Email është i detyrueshëm')
       return false
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError('Email nuk është i vlefshëm')
+      return false
+    }
+    if (!businessName?.trim()) {
+      setError('Emri i biznesit është i detyrueshëm')
+      return false
+    }
+    if (!password || password.length < 6) {
+      setError('Fjalëkalimi duhet të ketë së paku 6 karaktere')
+      return false
+    }
+    if (password !== confirmPassword) {
+      setError('Fjalëkalimet nuk përputhen')
       return false
     }
     return true
@@ -59,20 +55,23 @@ export function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, businessName }),
+        body: JSON.stringify({ 
+          name: name.trim(), 
+          email: email.trim().toLowerCase(), 
+          password, 
+          businessName: businessName.trim() 
+        }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Regjistrimi dështoi')
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.message || 'Regjistrimi dështoi')
       }
 
-      const data = await response.json()
-      if (!data.success) throw new Error(data.message)
-
-      // Auto-login after successful registration
-      await login(email, password)
-      navigate('/', { replace: true })
+      // Store token and redirect to dashboard
+      localStorage.setItem('stockflow_token', data.token)
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Regjistrimi dështoi')
     } finally {
@@ -81,7 +80,8 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#030712] text-[#e2e8f0]">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-[#e2e8f0]">
+      {/* Animated background effects */}
       <div
         className="pointer-events-none absolute inset-0 animate-cyber-gradient opacity-90"
         style={{
@@ -91,213 +91,237 @@ export function RegisterPage() {
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute -left-1/4 top-0 h-[55vh] w-[55vh] rounded-full opacity-70"
         style={{
-          backgroundImage: `
-            radial-gradient(circle at 25% 25%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 50%)
-          `,
+          background: 'radial-gradient(circle, rgba(56,189,248,0.35) 0%, transparent 65%)',
+          animation: 'cyber-pulse-glow 8s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute -right-1/4 bottom-0 h-[50vh] w-[50vh] rounded-full opacity-60"
+        style={{
+          background: 'radial-gradient(circle, rgba(167,139,250,0.4) 0%, transparent 68%)',
+          animation: 'cyber-pulse-glow 10s ease-in-out infinite 1s',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30h60M30 0v60' stroke='%2338bdf8' stroke-width='0.5'/%3E%3C/svg%3E")`,
         }}
       />
 
-      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-[#334155] bg-[#0f172a]/80 backdrop-blur-xl p-8 shadow-2xl">
-            {/* Logo */}
-            <div className="mb-8 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl border-2 border-[#22d3ee] bg-[#030712] shadow-lg shadow-[#22d3ee]/20">
-                <Package className="h-8 w-8 text-[#22d3ee]" />
-              </div>
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+        <div
+          className={cn(
+            'w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 shadow-2xl backdrop-blur-xl',
+            'shadow-[0_0_60px_rgba(34,211,238,0.08)]',
+          )}
+        >
+          {/* Logo and Header */}
+          <div className="mb-6 sm:mb-8 flex flex-col items-center text-center">
+            <div className="relative mb-4 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-fuchsia-600 shadow-[0_0_24px_rgba(56,189,248,0.45)]">
+              <Package className="h-6 w-6 sm:h-7 sm:w-7 text-white" strokeWidth={2} />
+              <span className="absolute inset-0 rounded-xl ring-1 ring-white/30" />
             </div>
+            <h1
+              className="bg-gradient-to-r from-[#22d3ee] via-[#38bdf8] to-[#a78bfa] bg-clip-text text-2xl sm:text-3xl font-bold tracking-tight text-transparent"
+              style={{ WebkitBackgroundClip: 'text' }}
+            >
+              StockFlow
+            </h1>
+            <p className="mt-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300/80">
+              NEURAL INVENTORY SYSTEM
+            </p>
+            <h2 className="mt-4 sm:mt-6 text-lg sm:text-xl font-semibold text-slate-100">Krijo Llogarinë</h2>
+            <p className="mt-1 text-sm text-slate-400">Regjistro biznesin tënd për të filluar</p>
+          </div>
 
-            {/* Header */}
-            <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold text-[#e2e8f0] mb-2">Krijo Llogarinë</h1>
-              <p className="text-[#94a3b8]">
-                Regjistro biznesin tënd për të filluar menaxhimin e inventarit
-              </p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="flex items-center gap-3 rounded-lg border border-[#ef4444]/20 bg-[#ef4444]/10 p-4">
-                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-[#ef4444]" />
-                  <p className="text-sm text-[#ef4444]">{error}</p>
-                </div>
-              )}
-
-              {/* Personal Information */}
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#e2e8f0]">
-                    Emri juaj
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748b]" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={cn(
-                        'w-full rounded-lg border border-[#334155] bg-[#0f172a] pl-10 pr-4 py-3 text-[#e2e8f0] transition-all',
-                        'placeholder:text-[#64748b]',
-                        'focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/20'
-                      )}
-                      placeholder="Shkruani emrin tuaj"
-                      disabled={submitting}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#e2e8f0]">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748b]" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={cn(
-                        'w-full rounded-lg border border-[#334155] bg-[#0f172a] pl-10 pr-4 py-3 text-[#e2e8f0] transition-all',
-                        'placeholder:text-[#64748b]',
-                        'focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/20'
-                      )}
-                      placeholder="email@shembull.com"
-                      disabled={submitting}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Business Information */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#e2e8f0]">
-                  Emri i Biznesit
-                </label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748b]" />
-                  <input
-                    type="text"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    className={cn(
-                      'w-full rounded-lg border border-[#334155] bg-[#0f172a] pl-10 pr-4 py-3 text-[#e2e8f0] transition-all',
-                      'placeholder:text-[#64748b]',
-                      'focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/20'
-                    )}
-                    placeholder="Studio i Thonjve Erta"
-                    disabled={submitting}
-                  />
-                </div>
-              </div>
-
-              {/* Password Fields */}
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#e2e8f0]">
-                    Fjalëkalimi
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748b]" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={cn(
-                        'w-full rounded-lg border border-[#334155] bg-[#0f172a] pl-10 pr-12 py-3 text-[#e2e8f0] transition-all',
-                        'placeholder:text-[#64748b]',
-                        'focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/20'
-                      )}
-                      placeholder="Të paktën 8 karaktere"
-                      disabled={submitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] transition-colors hover:text-[#e2e8f0]"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#e2e8f0]">
-                    Konfirmo Fjalëkalimin
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#64748b]" />
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={cn(
-                        'w-full rounded-lg border border-[#334155] bg-[#0f172a] pl-10 pr-12 py-3 text-[#e2e8f0] transition-all',
-                        'placeholder:text-[#64748b]',
-                        'focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/20'
-                      )}
-                      placeholder="Përsëritni fjalëkalimin"
-                      disabled={submitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b] transition-colors hover:text-[#e2e8f0]"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={submitting}
-                className={cn(
-                  'w-full rounded-lg py-3 font-semibold transition-all',
-                  'bg-gradient-to-r from-[#22d3ee] to-[#a855f7] text-white',
-                  'shadow-lg shadow-[#22d3ee]/20',
-                  'hover:shadow-[#22d3ee]/30 hover:from-[#06b6d4] hover:to-[#9333ea]',
-                  'disabled:cursor-not-allowed disabled:opacity-50',
-                  'flex items-center justify-center gap-2'
-                )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            {error && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 sm:px-4 py-3 text-sm text-[#f87171]"
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Duke regjistruar...
-                  </>
-                ) : (
-                  'Krijo Llogarinë'
-                )}
-              </button>
-            </form>
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Regjistrimi dështoi</p>
+                  <p className="mt-0.5 text-red-200/90">{error}</p>
+                </div>
+              </div>
+            )}
 
-            {/* Login Link */}
-            <div className="mt-8 text-center">
-              <p className="text-[#94a3b8]">
-                Keni llogari?{' '}
-                <a
-                  href="/login"
-                  className="font-semibold text-[#22d3ee] transition-colors hover:text-[#06b6d4]"
-                >
-                  Kyçuni
-                </a>
-              </p>
+            {/* Name Field */}
+            <div>
+              <label htmlFor="register-name" className="mb-1.5 block text-xs font-medium text-slate-400">
+                Emri juaj
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  id="register-name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Shkruani emrin tuaj"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={submitting}
+                  className={cn(
+                    'w-full rounded-xl border border-white/10 bg-white/5 px-10 py-3 text-sm text-slate-100 placeholder:text-slate-500',
+                    'outline-none transition-shadow focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30',
+                    'disabled:opacity-50'
+                  )}
+                />
+              </div>
             </div>
+
+            {/* Email Field */}
+            <div>
+              <label htmlFor="register-email" className="mb-1.5 block text-xs font-medium text-slate-400">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  id="register-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="email@shembull.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={submitting}
+                  className={cn(
+                    'w-full rounded-xl border border-white/10 bg-white/5 px-10 py-3 text-sm text-slate-100 placeholder:text-slate-500',
+                    'outline-none transition-shadow focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30',
+                    'disabled:opacity-50'
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Business Name Field */}
+            <div>
+              <label htmlFor="register-business" className="mb-1.5 block text-xs font-medium text-slate-400">
+                Emri i Biznesit
+              </label>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  id="register-business"
+                  type="text"
+                  autoComplete="organization"
+                  placeholder="Studio i Thonjve Erta"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  disabled={submitting}
+                  className={cn(
+                    'w-full rounded-xl border border-white/10 bg-white/5 px-10 py-3 text-sm text-slate-100 placeholder:text-slate-500',
+                    'outline-none transition-shadow focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30',
+                    'disabled:opacity-50'
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label htmlFor="register-password" className="mb-1.5 block text-xs font-medium text-slate-400">
+                Fjalëkalimi
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  id="register-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Të paktën 6 karaktere"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={submitting}
+                  className={cn(
+                    'w-full rounded-xl border border-white/10 bg-white/5 px-10 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-500',
+                    'outline-none transition-shadow focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30',
+                    'disabled:opacity-50'
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  disabled={submitting}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-cyan-400 disabled:opacity-50"
+                  aria-label={showPassword ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="register-confirm" className="mb-1.5 block text-xs font-medium text-slate-400">
+                Konfirmo Fjalëkalimin
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:h-5 sm:w-5" />
+                <input
+                  id="register-confirm"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Përsëritni fjalëkalimin"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={submitting}
+                  className={cn(
+                    'w-full rounded-xl border border-white/10 bg-white/5 px-10 py-3 pr-12 text-sm text-slate-100 placeholder:text-slate-500',
+                    'outline-none transition-shadow focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/30',
+                    'disabled:opacity-50'
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((s) => !s)}
+                  disabled={submitting}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-cyan-400 disabled:opacity-50"
+                  aria-label={showConfirmPassword ? 'Fshih fjalëkalimin' : 'Shfaq fjalëkalimin'}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className={cn(
+                'flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-slate-950 transition-all',
+                'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/25',
+                'hover:brightness-110 hover:shadow-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-60',
+              )}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Duke regjistruar...
+                </>
+              ) : (
+                'Krijo Llogarinë'
+              )}
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <div className="mt-6 text-center">
+            <p className="text-[#94a3b8] text-sm">
+              Keni llogari?{' '}
+              <Link
+                to="/login"
+                className="font-semibold text-[#22d3ee] transition-colors hover:text-[#06b6d4]"
+              >
+                Kyçuni
+              </Link>
+            </p>
           </div>
         </div>
       </div>

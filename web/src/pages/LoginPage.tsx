@@ -173,29 +173,7 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 rounded-xl border border-white/10 bg-black/20 p-4 text-left">
-            <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Llogari demo
-            </p>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li>
-                <span className="text-yellow-400">Super Admin:</span>{' '}
-                <span className="font-mono text-slate-300">admin@stockflow.com</span> /{' '}
-                <span className="font-mono text-slate-300">Admin123!</span>
-              </li>
-              <li>
-                <span className="text-[#38bdf8]">Demo Manager:</span>{' '}
-                <span className="font-mono text-slate-300">menaxher@stockflow.com</span> /{' '}
-                <span className="font-mono text-slate-300">Menaxher123!</span>
-              </li>
-              <li>
-                <span className="text-[#a78bfa]">Demo Staff:</span>{' '}
-                <span className="font-mono text-slate-300">staf@stockflow.com</span> /{' '}
-                <span className="font-mono text-slate-300">Staf123!</span>
-              </li>
-            </ul>
-          </div>
-
+          
           <div className="mt-6 text-center">
             <p className="text-[#94a3b8]">
               Nuk keni llogari?{' '}
