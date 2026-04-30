@@ -1,5 +1,6 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET, ROLE_PERMISSIONS } = require('../config/auth');
+const { ROLE_PERMISSIONS } = require('../config/auth');
 
 const authenticate = (req, res, next) => {
   try {
@@ -12,7 +13,8 @@ const authenticate = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET || 'stockflow-secret-2026';
+    const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     next();
   } catch (err) {

@@ -1,9 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
-const { JWT_SECRET, JWT_EXPIRES_IN, ROLE_PERMISSIONS } = require('../config/auth');
 const { authenticate } = require('../middlewares/authMiddleware');
 
 router.post('/register', async (req, res) => {
@@ -53,7 +53,7 @@ router.post('/register', async (req, res) => {
 
     // Hash password and create user
     const userId = 'u-' + Date.now();
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     await pool.query(
       `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active)
@@ -68,11 +68,11 @@ router.post('/register', async (req, res) => {
     ).catch(() => {}); // don't fail if logging fails
 
     // Generate JWT
-    const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/auth');
+    const jwtSecret = process.env.JWT_SECRET || 'stockflow-secret-2026';
     const token = jwt.sign(
       { id: userId, name: name.trim(), email: cleanEmail, role: 'manager', user_role: 'manager', tenant_id: tenantId },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      jwtSecret,
+      { expiresIn: '7d' }
     );
 
     res.status(201).json({
@@ -140,6 +140,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    const jwtSecret = process.env.JWT_SECRET || 'stockflow-secret-2026';
     const token = jwt.sign(
       {
         id: user.id,
@@ -149,8 +150,8 @@ router.post('/login', async (req, res) => {
         user_role: user.user_role || 'manager',
         tenant_id: user.tenant_id
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN },
+      jwtSecret,
+      { expiresIn: '7d' },
     );
 
     await pool.query(
@@ -183,7 +184,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, role FROM users WHERE id = $1',
+      'SELECT id, name, email, role, user_role, tenant_id FROM users WHERE id = $1',
       [req.user.id],
     );
     if (result.rows.length === 0) {
@@ -191,13 +192,16 @@ router.get('/me', authenticate, async (req, res) => {
     }
     
     const user = result.rows[0];
-    const permissions = ROLE_PERMISSIONS[user.role] || [];
     
     res.json({ 
       success: true, 
       data: {
-        ...user,
-        permissions
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        user_role: user.user_role || 'manager',
+        tenant_id: user.tenant_id
       }
     });
   } catch (err) {
@@ -211,10 +215,10 @@ router.post('/logout', authenticate, async (req, res) => {
 
 router.get('/logs', authenticate, async (req, res) => {
   try {
-    if (req.user.role !== 'administrator') {
+    if (req.user.user_role !== 'super_admin') {
       return res.status(403).json({
         success: false,
-        message: 'Vetëm administratori mund të shohë login logs.',
+        message: 'Vetëm super admin mund të shohë login logs.',
       });
     }
     const result = await pool.query(

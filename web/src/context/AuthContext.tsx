@@ -30,11 +30,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     const token = localStorage.getItem('stockflow_token')
+    const savedUser = localStorage.getItem('stockflow_user')
+    
     if (!token) {
       setUser(null)
       setToken(null)
       setIsLoading(false)
       return
+    }
+
+    // Set user from localStorage immediately
+    if (savedUser) {
+      try {
+        const userData = JSON.parse(savedUser)
+        setUser(userData)
+        setToken(token)
+      } catch (error) {
+        console.error('Error parsing saved user:', error)
+      }
     }
 
     try {
@@ -60,25 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await response.json()
       if (result.success) {
         const userData = result.data
-        setUser({
-          id: userData.id.toString(),
+        const user = {
+          id: userData.id,
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          user_role: userData.user_role || 'staff',
-          tenant_id: userData.tenant_id || null,
-          permissions: userData.permissions || []
-        })
+          user_role: userData.user_role || 'manager',
+          tenant_id: userData.tenant_id || null
+        }
+        setUser(user)
         setToken(token)
-        localStorage.setItem('stockflow_user', JSON.stringify({
-          id: userData.id.toString(),
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          user_role: userData.user_role || 'staff',
-          tenant_id: userData.tenant_id || null,
-          permissions: userData.permissions || []
-        }))
+        localStorage.setItem('stockflow_user', JSON.stringify(user))
       }
     } catch (error) {
       console.error('Error refreshing user:', error)
@@ -110,11 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json()
     if (!data.success) throw new Error(data.message)
     
-    setToken(data.token)
+    // Save token and user to localStorage
     localStorage.setItem('stockflow_token', data.token)
+    localStorage.setItem('stockflow_user', JSON.stringify(data.user))
     
-    // Fetch user data with permissions
-    await refreshUser()
+    // Set state directly from login response
+    setUser(data.user)
+    setToken(data.token)
   }
 
   const logout = () => {

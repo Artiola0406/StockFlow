@@ -69,8 +69,9 @@ export function RegisterPage() {
         throw new Error(data.message || 'Regjistrimi dështoi')
       }
 
-      // Store token and redirect to dashboard
+      // Store token and user to localStorage, then redirect to dashboard
       localStorage.setItem('stockflow_token', data.token)
+      localStorage.setItem('stockflow_user', JSON.stringify(data.user))
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Regjistrimi dështoi')
