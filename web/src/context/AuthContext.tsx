@@ -106,13 +106,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-    
-    if (!res.ok) {
-      const errorData = await res.json()
-      throw new Error(errorData.message || 'Login failed')
+
+    const raw = await res.text()
+    let data: any = {}
+    try {
+      data = raw ? JSON.parse(raw) : {}
+    } catch {
+      data = { message: raw || 'Login failed' }
     }
-    
-    const data = await res.json()
+    console.log("LOGIN RESPONSE:", data)
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Login failed')
+    }
+
     if (!data.success) throw new Error(data.message)
     
     // Save token and user to localStorage

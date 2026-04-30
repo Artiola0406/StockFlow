@@ -54,6 +54,7 @@ router.post('/register', async (req, res) => {
     // Hash password and create user
     const userId = 'u-' + Date.now();
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log("HASH BEFORE SAVE:", passwordHash);
 
     await pool.query(
       `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active)
@@ -99,85 +100,59 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  const ip = req.ip || req.connection?.remoteAddress;
-
   try {
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email dhe fjalëkalimi janë të detyrueshëm.',
-      });
-    }
+    const { email, password } = req.body;
+
+    console.log("LOGIN INPUT:", email);
+
+    if (!email || !password)
+      return res.status(400).json({ success: false, message: 'Missing credentials' });
+
+    const cleanEmail = email.toLowerCase().trim();
 
     const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND is_active = true',
-      [email.toLowerCase().trim()],
+      'SELECT * FROM users WHERE email = $1',
+      [cleanEmail]
     );
+    console.log("DB RESULT:", result.rows);
 
-    if (result.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)',
-        [email, false, ip, 'Useri nuk u gjet'],
-      );
-      return res.status(401).json({
-        success: false,
-        message: 'Email ose fjalëkalim i gabuar.',
-      });
+    if (!result.rows.length) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
     const user = result.rows[0];
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    console.log("HASH FROM DB:", user.password_hash);
 
-    if (!isValidPassword) {
-      await pool.query(
-        'INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)',
-        [email, false, ip, 'Fjalëkalim i gabuar'],
-      );
-      return res.status(401).json({
-        success: false,
-        message: 'Email ose fjalëkalim i gabuar.',
-      });
+    if (!user.password_hash) {
+      console.error("Missing password_hash in DB for user:", user.email);
+      return res.status(500).json({ success: false, message: 'User data corrupted' });
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'stockflow-secret-2026';
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
     const token = jwt.sign(
-      {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        user_role: user.user_role || 'manager',
-        tenant_id: user.tenant_id
-      },
-      jwtSecret,
-      { expiresIn: '7d' },
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
 
-    await pool.query(
-      'INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)',
-      [email, true, ip, 'Kyçje e suksesshme'],
-    );
-
-    res.json({
+    return res.json({
       success: true,
-      message: 'U kyçët me sukses!',
       token,
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
-        role: user.role,
-        user_role: user.user_role || 'manager',
-        tenant_id: user.tenant_id
-      },
+        name: user.name
+      }
     });
+
   } catch (err) {
-    console.error('❌ Gabim në login:', err.message);
-    res.status(500).json({
-      success: false,
-      message: 'Gabim i serverit. Provoni përsëri.',
-    });
+    console.error("LOGIN CRASH:", err);
+    return res.status(500).json({ success: false, message: 'Server error during login' });
   }
 });
 
