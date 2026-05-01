@@ -1,3 +1,4 @@
+// TODO: Frontend currently uses localStorage - migrate to this API
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middlewares/authMiddleware');
@@ -14,11 +15,9 @@ if (useDatabase) {
   const WarehouseService = require('../services/WarehouseService');
   const WarehouseDbRepository = require('../repositories/WarehouseDbRepository');
   service = new WarehouseService(new WarehouseDbRepository());
-  console.log('✅ Warehouse routes: PostgreSQL');
 } else {
   const WarehouseService = require('../services/WarehouseService');
   service = new WarehouseService();
-  console.log('⚠️ Warehouse routes: CSV');
 }
 
 router.get('/', async (req, res) => {

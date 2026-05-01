@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Doughnut, Bar } from 'react-chartjs-2'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Skeleton } from '../components/ui/Skeleton'
-import { apiGet } from '../lib/api'
+import { useProductStats } from '../hooks/useProductStats'
 import { formatCurrency } from '../lib/format'
-import type { ApiListResponse, Product } from '../types'
+import type { Product } from '../types'
 import { useTheme } from '../context/ThemeContext'
 import type { TooltipItem } from 'chart.js'
 
@@ -12,27 +12,7 @@ const NEON = ['#22d3ee', '#a78bfa', '#f472b6', '#38bdf8', '#e879f9', '#2dd4bf']
 
 export function ReportsPage() {
   const { isDark } = useTheme()
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiGet<ApiListResponse<Product[]>>('/products')
-      setProducts(res.data ?? [])
-    } catch {
-      setError('Të dhënat nuk mund të ngarkohen')
-      setProducts([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const { products, loading, error } = useProductStats()
 
   const analytics = useMemo(() => {
     const totalVal = products.reduce(

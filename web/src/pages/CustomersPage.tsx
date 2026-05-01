@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
-import { lsGet, lsSet } from '../lib/storage'
+import { useLocalStorageState } from '../hooks/useLocalStorage'
 import { useToast } from '../context/ToastContext'
 import type { Customer } from '../types'
 
@@ -11,15 +11,10 @@ const KEY = 'customers'
 
 export function CustomersPage() {
   const { showToast } = useToast()
-  const [rows, setRows] = useState<Customer[]>(() => lsGet<Customer[]>(KEY, []))
+  const { rows, persist } = useLocalStorageState<Customer[]>(KEY, [])
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '' })
   const [editOpen, setEditOpen] = useState(false)
   const [edit, setEdit] = useState<Customer | null>(null)
-
-  const persist = useCallback((next: Customer[]) => {
-    lsSet(KEY, next)
-    setRows(next)
-  }, [])
 
   const todayNew = useMemo(() => {
     const t = new Date().toDateString()

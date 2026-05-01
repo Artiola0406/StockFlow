@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Doughnut } from 'react-chartjs-2'
 import { Package, Euro, AlertTriangle, Tags, Plus, ArrowRightLeft, ClipboardList, BarChart3 } from 'lucide-react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Skeleton'
-import { apiGet } from '../lib/api'
-import { formatCurrency } from '../lib/format'
-import type { ApiListResponse, Product } from '../types'
+import { useProductStats } from '../hooks/useProductStats'
 import { useTheme } from '../context/ThemeContext'
 import { cn } from '../lib/cn'
 
@@ -59,43 +57,7 @@ function StatCard({
 
 export function DashboardPage() {
   const { isDark } = useTheme()
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [_error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await apiGet<ApiListResponse<Product[]>>('/products')
-      setProducts(res.data ?? [])
-    } catch {
-      setError(null)
-      setProducts([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const stats = useMemo(() => {
-    const totalVal = products.reduce(
-      (s, p) => s + parseFloat(String(p.price)) * parseInt(String(p.quantity), 10),
-      0,
-    )
-    const low = products.filter((p) => parseInt(String(p.quantity), 10) < 5)
-    const cats = new Set(products.map((p) => p.category))
-    return {
-      count: products.length,
-      value: formatCurrency(totalVal),
-      lowCount: low.length,
-      low,
-      catCount: cats.size,
-    }
-  }, [products])
+  const { products, loading, stats } = useProductStats()
 
   const chartData = useMemo(() => {
     const catData: Record<string, number> = {}

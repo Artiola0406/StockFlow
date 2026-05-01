@@ -14,11 +14,9 @@ if (useDatabase) {
   const ProductService = require('../services/ProductService');
   const ProductDbRepository = require('../repositories/ProductDbRepository');
   service = new ProductService(new ProductDbRepository());
-  console.log('✅ Products: duke përdorur PostgreSQL');
 } else {
   const ProductService = require('../services/ProductService');
   service = new ProductService();
-  console.log('⚠️ Products: duke përdorur CSV (pa DATABASE_URL)');
 }
 
 router.get('/', async (req, res) => {
@@ -75,7 +73,6 @@ router.post('/', async (req, res) => {
 
     const id = Date.now().toString();
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
-    console.log('Creating product for tenant:', tenantId);
 
     const countResult = await pool.query(
       'SELECT COUNT(*)::int AS total FROM products WHERE tenant_id = $1',

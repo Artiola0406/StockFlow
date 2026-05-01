@@ -14,11 +14,9 @@ if (useDatabase) {
   const OrderService = require('../services/OrderService');
   const OrderDbRepository = require('../repositories/OrderDbRepository');
   service = new OrderService(new OrderDbRepository());
-  console.log('Order routes: PostgreSQL');
 } else {
   const OrderService = require('../services/OrderService');
   service = new OrderService();
-  console.log('Order routes: CSV');
 }
 
 router.get('/', async (req, res) => {

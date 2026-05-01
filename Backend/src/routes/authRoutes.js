@@ -19,7 +19,6 @@ function getJwtSecret() {
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   const businessName = (req.body.businessName || '').trim() || name;
-  console.log('REGISTER ATTEMPT:', { name, email, businessName });
 
   try {
     if (!name || !email || !password) {
@@ -90,7 +89,6 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [ownerId, name, email, ownerHash, 'super_admin', 'super_admin', tenantId]
       );
-      console.log('Created owner:', email);
 
       const managerPassword = `${businessName}2024!`;
       const managerHash = await bcrypt.hash(managerPassword, 10);
@@ -99,7 +97,6 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [managerId, `Menaxher - ${businessName}`, managerEmailResolved, managerHash, 'manager', 'manager', tenantId]
       );
-      console.log('Created manager:', managerEmailResolved);
 
       const staffPassword = `${businessName}2024!`;
       const staffHash = await bcrypt.hash(staffPassword, 10);
@@ -108,7 +105,6 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [staffId, `Staf - ${businessName}`, staffEmailResolved, staffHash, 'staff', 'staff', tenantId]
       );
-      console.log('Created staff:', staffEmailResolved);
 
       await client.query('COMMIT');
 

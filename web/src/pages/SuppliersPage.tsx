@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
-import { lsGet, lsSet } from '../lib/storage'
+import { useLocalStorageState } from '../hooks/useLocalStorage'
 import { useToast } from '../context/ToastContext'
 import type { SupplierRow } from '../types'
 import { cn } from '../lib/cn'
@@ -12,15 +12,10 @@ const KEY = 'suppliers'
 
 export function SuppliersPage() {
   const { showToast } = useToast()
-  const [rows, setRows] = useState<SupplierRow[]>(() => lsGet<SupplierRow[]>(KEY, []))
+  const { rows, persist } = useLocalStorageState<SupplierRow[]>(KEY, [])
   const [form, setForm] = useState({ name: '', email: '', phone: '', isActive: true })
   const [editOpen, setEditOpen] = useState(false)
   const [edit, setEdit] = useState<SupplierRow | null>(null)
-
-  const persist = useCallback((next: SupplierRow[]) => {
-    lsSet(KEY, next)
-    setRows(next)
-  }, [])
 
   function add() {
     if (!form.name.trim()) return showToast('Emri është i detyrueshëm!', 'error')

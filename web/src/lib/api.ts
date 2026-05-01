@@ -70,7 +70,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
   // For successful responses, try to parse JSON
   try {
     return await res.json()
-  } catch (error) {
+  } catch {
     // If JSON parsing fails on success response, return empty object
     return {} as T
   }

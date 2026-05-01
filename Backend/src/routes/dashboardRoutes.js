@@ -1,3 +1,4 @@
+// TODO: Frontend calls /api/products directly - migrate to this endpoint
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middlewares/authMiddleware');

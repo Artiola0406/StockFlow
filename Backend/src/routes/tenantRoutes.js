@@ -8,13 +8,6 @@ router.get('/users', async (req, res) => {
     const rawId = req.user && req.user.tenant_id;
     const tenantId = rawId != null && rawId !== '' ? String(rawId).trim() : null;
 
-    console.log('Fetching users for tenant:', tenantId, 'from JWT user:', {
-      id: req.user?.id,
-      email: req.user?.email,
-      role: req.user?.role,
-      tenant_id: req.user?.tenant_id,
-    });
-
     if (!tenantId) {
       return res.status(400).json({ error: 'No tenant context' });
     }
