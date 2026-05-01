@@ -29,68 +29,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshUser = async () => {
-    const token = localStorage.getItem('stockflow_token')
-    const savedUser = localStorage.getItem('stockflow_user')
-    
-    if (!token) {
+    const savedToken = localStorage.getItem('stockflow_token')
+    if (!savedToken) {
       setUser(null)
       setToken(null)
       setIsLoading(false)
       return
     }
 
-    // Set user from localStorage immediately
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser)
-        setUser(userData)
-        setToken(token)
-      } catch (error) {
-        console.error('Error parsing saved user:', error)
-      }
-    }
-
     try {
-      const response = await fetch('/api/auth/me', {
+      const res = await fetch('/api/auth/me', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${savedToken}`,
+          'Content-Type': 'application/json',
+        },
       })
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('stockflow_token')
-          localStorage.removeItem('stockflow_user')
-          setToken(null)
-          setUser(null)
-          window.location.href = '/login'
-          return
-        }
-        throw new Error('Failed to fetch user data')
-      }
+      const data = await res.json()
 
-      const result = await response.json()
-      if (result.success) {
-        const userData = result.data
-        const user = {
-          id: userData.id,
-          name: userData.name,
-          email: userData.email,
-          role: userData.role,
-          user_role: userData.user_role || 'manager',
-          tenant_id: userData.tenant_id || null
-        }
-        setUser(user)
-        setToken(token)
-        localStorage.setItem('stockflow_user', JSON.stringify(user))
+      if (data.success) {
+        setUser(data.data)
+        setToken(savedToken)
+        localStorage.setItem('stockflow_user', JSON.stringify(data.data))
+      } else if (res.status === 401 || !data.success) {
+        localStorage.removeItem('stockflow_token')
+        localStorage.removeItem('stockflow_user')
+        setUser(null)
+        setToken(null)
       }
     } catch (error) {
-      console.error('Error refreshing user:', error)
+      console.error('Gabim gjatë marrjes së përdoruesit:', error)
       localStorage.removeItem('stockflow_token')
       localStorage.removeItem('stockflow_user')
-      setToken(null)
       setUser(null)
+      setToken(null)
     } finally {
       setIsLoading(false)
     }
@@ -106,21 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
+    const data = await res.json()
 
-    const raw = await res.text()
-    let data: any = {}
-    try {
-      data = raw ? JSON.parse(raw) : {}
-    } catch {
-      data = { message: raw || 'Login failed' }
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Kyçja dështoi.')
     }
-    console.log("LOGIN RESPONSE:", data)
-
-    if (!res.ok) {
-      throw new Error(data.message || 'Login failed')
-    }
-
-    if (!data.success) throw new Error(data.message)
     
     // Save token and user to localStorage
     localStorage.setItem('stockflow_token', data.token)
@@ -132,26 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    setToken(null)
-    setUser(null)
     localStorage.removeItem('stockflow_token')
     localStorage.removeItem('stockflow_user')
+    setUser(null)
+    setToken(null)
     window.location.href = '/login'
   }
 
-  const ROLE_PERMISSIONS: Record<string, string[]> = {
-    super_admin: ['dashboard','products','warehouses','stockmovements',
-      'suppliers','orders','customers','reports','users','tenants'],
-    manager: ['dashboard','products','warehouses','suppliers',
-      'orders','customers','reports','stockmovements'],
-    staff: ['dashboard','products','stockmovements']
-  }
-
   const hasPermission = (page: string): boolean => {
+    const ROLE_PERMISSIONS = {
+      super_admin: ['dashboard','products','warehouses','stockmovements','suppliers','orders','customers','reports','users','tenants'],
+      manager: ['dashboard','products','warehouses','suppliers','orders','customers','reports','stockmovements'],
+      staff: ['dashboard','products','stockmovements']
+    }
     if (!user) return false
-    const userRole = user.user_role || 'staff'
-    if (userRole === 'super_admin') return true
-    return ROLE_PERMISSIONS[userRole]?.includes(page) ?? false
+    const role = user.user_role || 'staff'
+    if (role === 'super_admin') return true
+    return ROLE_PERMISSIONS[role]?.includes(page) ?? false
   }
 
   return (

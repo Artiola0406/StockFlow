@@ -6,7 +6,8 @@
   "test": "jest",
   "migrate": "node src/database/migrate.js",
   "seed:users": "node src/database/seedUsers.js",
-  "setup": "npm run migrate && npm run seed:users"
+  "setup": "npm run migrate && npm run seed:users",
+  "fix:passwords": "node src/database/fixPasswords.js"
 },
 "dependencies": {
     "bcryptjs": "^3.0.2",

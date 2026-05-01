@@ -65,8 +65,9 @@ export function RegisterPage() {
 
       const data = await response.json()
 
-      if (!data.success) {
-        throw new Error(data.message || 'Regjistrimi dështoi')
+      if (!response.ok || !data.success) {
+        setError(data.message || 'Regjistrimi dështoi')
+        return
       }
 
       // Store token and user to localStorage, then redirect to dashboard
