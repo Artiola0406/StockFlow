@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const { authenticate } = require('../middlewares/authMiddleware');
-const { JWT_EXPIRES_IN, SALT_ROUNDS } = require('../config/auth');
+const { JWT_EXPIRES_IN } = require('../config/auth');
 
 const router = express.Router();
 
@@ -25,61 +25,38 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Name, email and password are required' });
     }
 
-    const normalizedEmail = String(email).toLowerCase().trim();
-    const normalizedName = String(name).trim();
-
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const userId = `u-${Date.now()}`;
-    const generatedTenantId = 'tenant-' + Date.now();
-    const tenantResult = await pool.query('SELECT id FROM tenants LIMIT 1');
-    let resolvedTenantId;
+    let tenantId;
+    const tenantResult = await pool.query('SELECT id FROM tenants WHERE is_active = true LIMIT 1');
 
     if (tenantResult.rows.length > 0) {
-      resolvedTenantId = tenantResult.rows[0].id;
+      tenantId = tenantResult.rows[0].id;
     } else {
-      const tenantColsQuery = await pool.query(
-        "SELECT column_name FROM information_schema.columns WHERE table_name='tenants'"
-      );
-      const tenantColumns = tenantColsQuery.rows.map((r) => r.column_name);
-      const valuesByColumn = {
-        id: generatedTenantId,
-        name: businessName && String(businessName).trim() ? String(businessName).trim() : 'Default',
-        slug: 'default',
-        owner_email: normalizedEmail,
-        is_active: true,
-        plan: 'free',
-      };
-
-      const insertCols = tenantColumns.filter((col) => Object.prototype.hasOwnProperty.call(valuesByColumn, col));
-      if (insertCols.length === 0) {
-        throw new Error('No compatible columns found for tenants insert');
-      }
-
-      const placeholders = insertCols.map((_, idx) => `$${idx + 1}`).join(', ');
-      const insertValues = insertCols.map((col) => valuesByColumn[col]);
-
+      const newTenantId = 'tenant-' + Date.now();
+      const slug = 'tenant-' + Date.now();
       await pool.query(
-        `INSERT INTO tenants (${insertCols.join(', ')}) VALUES (${placeholders})`
-        ,
-        insertValues
+        'INSERT INTO tenants (id, name, slug, owner_email, is_active, plan, created_at) VALUES ($1, $2, $3, $4, true, $5, NOW())',
+        [newTenantId, businessName || 'Default', slug, email, 'free']
       );
-      resolvedTenantId = generatedTenantId;
+      tenantId = newTenantId;
     }
 
+    const userId = 'user-' + Date.now();
+    const hash = await bcrypt.hash(password, 10);
+
     await pool.query(
-      `INSERT INTO users (id, name, email, password_hash, role, tenant_id, is_active)
-       VALUES ($1, $2, $3, $4, 'staff', $5, true)`,
-      [userId, normalizedName, normalizedEmail, passwordHash, resolvedTenantId]
+      `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active, created_at)
+       VALUES ($1, $2, $3, $4, 'staff', 'staff', $5, true, NOW())`,
+      [userId, name, email, hash, tenantId]
     );
 
     return res.status(201).json({ message: 'Registration successful' });
   } catch (err) {
-    console.error('REGISTER ERROR full:', JSON.stringify(err));
+    console.error('REGISTER ERROR:', err.message, err.detail, err.code);
     return res.status(500).json({ error: 'Server error during registration' });
   }
 });
@@ -117,8 +94,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const normalizedEmail = String(email).toLowerCase().trim();
-    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [normalizedEmail]);
+    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -134,6 +110,7 @@ router.post('/login', async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        user_role: user.user_role,
         tenant_id: user.tenant_id,
       },
       getJwtSecret(),
@@ -158,6 +135,7 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        user_role: user.user_role,
         tenant_id: user.tenant_id,
       },
     });
@@ -170,7 +148,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, role, tenant_id FROM users WHERE id = $1 AND is_active = true',
+      'SELECT id, name, email, role, user_role, tenant_id FROM users WHERE id = $1 AND is_active = true',
       [req.user.id]
     );
 
@@ -184,6 +162,7 @@ router.get('/me', authenticate, async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      user_role: user.user_role,
       tenant_id: user.tenant_id,
       permissions: [],
     });
