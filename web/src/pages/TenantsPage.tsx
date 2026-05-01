@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { Clipboard, Check } from 'lucide-react'
 import { Card, CardTitle } from '../components/ui/Card'
-import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Skeleton'
 import { apiGet } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
+
+/** Must match api.ts base `/api` → full URL GET /api/tenants/users */
+const TENANT_TEAM_ENDPOINT = '/tenants/users'
 
 type TenantUserRow = {
   id: string
@@ -14,7 +16,7 @@ type TenantUserRow = {
   email: string
   role: string
   user_role?: string | null
-  is_active: boolean
+  is_active?: boolean | null | string | number
   created_at?: string
 }
 
@@ -27,41 +29,63 @@ function effectiveRole(u: TenantUserRow): string {
   return (u.user_role || u.role || 'staff').toLowerCase()
 }
 
-function readStoredTenantHint(): string | null {
+function isUserActive(u: TenantUserRow): boolean {
+  const v = u.is_active
+  if (v === true) return true
+  if (v === false || v == null) return false
+  if (typeof v === 'string') return v === 't' || v.toLowerCase() === 'true'
+  return Boolean(v)
+}
+
+function readStoredBusinessHint(): string | null {
   try {
     const raw = localStorage.getItem('stockflow_user')
     if (!raw) return null
-    const u = JSON.parse(raw) as { tenant_id?: string | number | null }
-    if (u.tenant_id == null || u.tenant_id === '') return null
-    return String(u.tenant_id)
+    const u = JSON.parse(raw) as {
+      tenant_id?: string | number | null
+      tenantName?: string
+      businessName?: string
+    }
+    if (u.tenantName?.trim()) return u.tenantName.trim()
+    if (u.businessName?.trim()) return u.businessName.trim()
+    if (u.tenant_id != null && u.tenant_id !== '') return String(u.tenant_id)
+    return null
   } catch {
     return null
   }
 }
 
-function roleSectionMeta(roleKey: string): { title: string; badgeClass: string } {
+const ROLE_KEYS = ['super_admin', 'manager', 'staff'] as const
+
+function sectionConfig(roleKey: (typeof ROLE_KEYS)[number]): {
+  title: string
+  emptyMsg: string
+  glow: 'cyan' | 'violet' | 'pink'
+  cardBorder: string
+} {
   if (roleKey === 'super_admin') {
     return {
-      title: '👑 Super Admin',
-      badgeClass:
-        'border border-teal-400/35 bg-teal-500/15 text-teal-200 shadow-[0_0_16px_rgba(45,212,191,0.25)]',
+      title: '👑 Pronari',
+      emptyMsg: 'Nuk ka pronar të caktuar',
+      glow: 'cyan',
+      cardBorder: 'border-teal-400/25 shadow-[0_0_24px_rgba(45,212,191,0.08)]',
     }
   }
   if (roleKey === 'manager') {
     return {
-      title: '👔 Menaxher',
-      badgeClass:
-        'border border-violet-400/35 bg-violet-500/15 text-violet-200 shadow-[0_0_16px_rgba(167,139,250,0.22)]',
+      title: '👔 Menaxheri',
+      emptyMsg: 'Nuk ka menaxher të caktuar',
+      glow: 'violet',
+      cardBorder: 'border-violet-400/25 shadow-[0_0_24px_rgba(167,139,250,0.08)]',
     }
   }
   return {
-    title: '👷 Staf',
-    badgeClass:
-      'border border-sky-400/35 bg-sky-500/15 text-sky-200 shadow-[0_0_16px_rgba(56,189,248,0.22)]',
+    title: '👷 Stafi',
+    emptyMsg: 'Nuk ka staf të caktuar',
+    glow: 'pink',
+    cardBorder: 'border-sky-400/25 shadow-[0_0_24px_rgba(56,189,248,0.08)]',
   }
 }
-
-const ROLE_ORDER = ['super_admin', 'manager', 'staff'] as const
 
 export function TenantsPage() {
   const { user } = useAuth()
@@ -74,7 +98,7 @@ export function TenantsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await apiGet<TenantUsersResponse>('/tenants/users')
+      const data = await apiGet<TenantUsersResponse>(TENANT_TEAM_ENDPOINT)
       setUsers(Array.isArray(data.users) ? data.users : [])
       setTenantName(data.tenantName ?? null)
     } catch {
@@ -92,7 +116,7 @@ export function TenantsPage() {
 
   const headerBizName = useMemo(() => {
     if (tenantName?.trim()) return tenantName.trim()
-    const fromLs = readStoredTenantHint()
+    const fromLs = readStoredBusinessHint()
     if (fromLs) return fromLs
     if (user?.tenant_id != null) return String(user.tenant_id)
     return null
@@ -100,10 +124,10 @@ export function TenantsPage() {
 
   const grouped = useMemo(() => {
     const map = new Map<string, TenantUserRow[]>()
-    for (const key of ROLE_ORDER) map.set(key, [])
+    for (const key of ROLE_KEYS) map.set(key, [])
     for (const u of users) {
       const r = effectiveRole(u)
-      let bucket: (typeof ROLE_ORDER)[number] = 'staff'
+      let bucket: (typeof ROLE_KEYS)[number] = 'staff'
       if (r === 'super_admin') bucket = 'super_admin'
       else if (r === 'manager') bucket = 'manager'
       map.get(bucket)!.push(u)
@@ -122,22 +146,34 @@ export function TenantsPage() {
     }
   }
 
-  function renderUserRows(rows: TenantUserRow[], roleKey: string) {
-    const meta = roleSectionMeta(roleKey)
+  function renderSection(roleKey: (typeof ROLE_KEYS)[number]) {
+    const cfg = sectionConfig(roleKey)
+    const rows = grouped.get(roleKey) ?? []
+
     return (
-      <Card key={roleKey} glow="cyan" className="overflow-hidden border-cyan-500/20 bg-[#0f172a]/80 dark:bg-[#0f172a]/90">
+      <Card
+        key={roleKey}
+        glow={cfg.glow}
+        className={cn(
+          'overflow-hidden bg-[#0f172a]/85 dark:bg-[#0f172a]/90',
+          cfg.cardBorder,
+        )}
+      >
         <CardTitle className="mb-4 flex flex-wrap items-center gap-2">
           <span
             className={cn(
               'rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wide',
-              meta.badgeClass,
+              roleKey === 'super_admin' &&
+                'border border-teal-400/40 bg-teal-500/15 text-teal-100 shadow-[0_0_20px_rgba(45,212,191,0.2)]',
+              roleKey === 'manager' &&
+                'border border-violet-400/40 bg-violet-500/15 text-violet-100 shadow-[0_0_20px_rgba(167,139,250,0.2)]',
+              roleKey === 'staff' &&
+                'border border-sky-400/40 bg-sky-500/15 text-sky-100 shadow-[0_0_20px_rgba(56,189,248,0.2)]',
             )}
           >
-            {meta.title}
+            {cfg.title}
           </span>
-          <span className="text-sm font-normal text-slate-500 dark:text-slate-400">
-            ({rows.length})
-          </span>
+          <span className="text-sm font-normal text-slate-500 dark:text-slate-400">({rows.length})</span>
         </CardTitle>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -151,8 +187,8 @@ export function TenantsPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-8 text-center text-slate-500 dark:text-slate-400">
-                    Nuk ka përdorues në këtë rol.
+                  <td colSpan={3} className="py-8 text-center text-sm text-slate-500/70 dark:text-slate-500/60">
+                    {cfg.emptyMsg}
                   </td>
                 </tr>
               ) : (
@@ -164,21 +200,19 @@ export function TenantsPage() {
                     <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{row.name}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
-                          {row.email}
-                        </span>
+                        <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{row.email}</span>
                         <button
                           type="button"
                           onClick={() => copyEmail(row.email, row.id)}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-500/20 dark:text-cyan-200"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-1.5 text-cyan-700 transition-colors hover:bg-cyan-500/20 dark:text-cyan-200"
                           aria-label="Kopjo email-in"
+                          title="Kopjo"
                         >
                           {copiedId === row.id ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                            <Check className="h-4 w-4 text-emerald-400" />
                           ) : (
-                            <Copy className="h-3.5 w-3.5" />
+                            <Clipboard className="h-4 w-4" />
                           )}
-                          Kopjo
                         </button>
                       </div>
                     </td>
@@ -187,16 +221,20 @@ export function TenantsPage() {
                         <span
                           className={cn(
                             'h-2 w-2 rounded-full shadow-[0_0_8px_currentColor]',
-                            row.is_active ? 'bg-emerald-400 text-emerald-400' : 'bg-red-400 text-red-400',
+                            isUserActive(row)
+                              ? 'bg-emerald-400 text-emerald-400'
+                              : 'bg-red-400 text-red-400',
                           )}
                         />
                         <span
                           className={cn(
                             'text-xs font-semibold',
-                            row.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+                            isUserActive(row)
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400',
                           )}
                         >
-                          {row.is_active ? 'Aktiv' : 'Joaktiv'}
+                          {isUserActive(row) ? 'Aktiv' : 'Joaktiv'}
                         </span>
                       </span>
                     </td>
@@ -214,9 +252,7 @@ export function TenantsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Ekipi im</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Menaxho anëtarët e biznesit tuaj
-        </p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Anëtarët e biznesit tuaj</p>
         {headerBizName && (
           <p className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-cyan-500/20 bg-[#0f172a]/70 px-4 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.08)] backdrop-blur-sm dark:border-cyan-400/25">
             <span className="text-xs font-semibold uppercase tracking-wider text-cyan-500/90 dark:text-cyan-300/90">
@@ -235,17 +271,8 @@ export function TenantsPage() {
             <Skeleton className="h-3 w-4/5" />
           </div>
         </div>
-      ) : users.length === 0 ? (
-        <Card glow="cyan" className="border-cyan-500/20 bg-[#0f172a]/80 py-16 text-center dark:bg-[#0f172a]/90">
-          <p className="text-slate-500 dark:text-slate-400">Nuk u gjetën përdorues për këtë tenant.</p>
-          <Button type="button" variant="secondary" className="mt-4" onClick={() => load()}>
-            Provo përsëri
-          </Button>
-        </Card>
       ) : (
-        <div className="flex flex-col gap-6">
-          {ROLE_ORDER.map((roleKey) => renderUserRows(grouped.get(roleKey) ?? [], roleKey))}
-        </div>
+        <div className="flex flex-col gap-6">{ROLE_KEYS.map((roleKey) => renderSection(roleKey))}</div>
       )}
     </div>
   )

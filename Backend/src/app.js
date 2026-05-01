@@ -13,6 +13,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
 const authRoutes = require('./routes/authRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
+const userRoutes = require('./routes/userRoutes');
 const { authenticate, requirePermission } = require('./middlewares/authMiddleware');
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/suppliers', ...requirePermission('suppliers'), supplierRoutes);
 app.use('/api/customers', ...requirePermission('customers'), customerRoutes);
 app.use('/api/orders', ...requirePermission('orders'), orderRoutes);
 app.use('/api/stockmovements', ...requirePermission('stockmovements'), stockMovementRoutes);
+app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tenants', authenticate, tenantRoutes);
 
 const pagesPath = path.join(__dirname, '../../Frontend/src/pages');

@@ -13,7 +13,7 @@ import { ReportsPage } from './pages/ReportsPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
-import { UsersPage } from './pages/UsersPage'
+import { PerdoruesitPage } from './pages/PerdoruesitPage'
 import { TenantsPage } from './pages/TenantsPage'
 
 export default function App() {
@@ -94,7 +94,7 @@ export default function App() {
               path="users"
               element={
                 <ProtectedRoute requiredPage="users">
-                  <UsersPage />
+                  <PerdoruesitPage />
                 </ProtectedRoute>
               }
             />

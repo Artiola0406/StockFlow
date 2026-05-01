@@ -17,6 +17,7 @@ import {
 import { cn } from '../../lib/cn'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
+import { isPlatformAdmin } from '../../lib/platformAdmin'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, permission: 'dashboard' as const },
@@ -82,10 +83,12 @@ function Aside({
 }) {
   const { user, hasPermission, logout } = useAuth()
   const paths = allowedNavPaths(user?.role)
-  const filteredNav = nav.filter(
-    (item) =>
-      (paths == null || paths.has(item.to)) && hasPermission(item.permission),
-  )
+  const filteredNav = nav.filter((item) => {
+    if (item.to === '/users' && !isPlatformAdmin(user)) {
+      return false
+    }
+    return (paths == null || paths.has(item.to)) && hasPermission(item.permission)
+  })
 
   return (
     <aside

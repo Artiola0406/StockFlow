@@ -1,12 +1,20 @@
 const express = require('express');
 const pool = require('../config/database');
-const { authorize } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.get('/users', authorize('super_admin'), async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const rawId = req.user && req.user.tenant_id;
+    const tenantId = rawId != null && rawId !== '' ? String(rawId).trim() : null;
+
+    console.log('Fetching users for tenant:', tenantId, 'from JWT user:', {
+      id: req.user?.id,
+      email: req.user?.email,
+      role: req.user?.role,
+      tenant_id: req.user?.tenant_id,
+    });
+
     if (!tenantId) {
       return res.status(400).json({ error: 'No tenant context' });
     }
