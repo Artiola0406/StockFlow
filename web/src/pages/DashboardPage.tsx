@@ -70,7 +70,7 @@ export function DashboardPage() {
       const res = await apiGet<ApiListResponse<Product[]>>('/products')
       setProducts(res.data ?? [])
     } catch {
-      setError('Serveri nuk është aktiv. Starto Backend: node src/app.js')
+      setError(null)
       setProducts([])
     } finally {
       setLoading(false)
@@ -204,8 +204,8 @@ export function DashboardPage() {
           <CardTitle className="mb-4">Produktet sipas kategorisë</CardTitle>
           {loading ? (
             <Skeleton className="mx-auto h-52 w-52 rounded-full" />
-          ) : error ? (
-            <p className="py-12 text-center text-sm text-rose-500">{error}</p>
+          ) : products.length === 0 ? (
+            <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">Nuk ka produkte</p>
           ) : (
             <div className="h-56">
               <Doughnut key={String(isDark)} data={chartData} options={chartOptions} />
