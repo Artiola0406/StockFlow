@@ -35,36 +35,77 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const userId = `u-${Date.now()}`;
-    const tenantResult = await pool.query('SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1');
-    let tenantId;
+    const generatedTenantId = 'tenant-' + Date.now();
+    const tenantResult = await pool.query('SELECT id FROM tenants LIMIT 1');
+    let resolvedTenantId;
 
     if (tenantResult.rows.length > 0) {
-      tenantId = tenantResult.rows[0].id;
+      resolvedTenantId = tenantResult.rows[0].id;
     } else {
-      const timestamp = Date.now();
-      const tenantName = businessName && String(businessName).trim() ? String(businessName).trim() : 'Default Tenant';
-      const tenantIdValue = `tenant-${timestamp}`;
-      const tenantSlugBase = tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'default-tenant';
-      const tenantSlug = `${tenantSlugBase}-${timestamp}`;
-      const tenantInsert = await pool.query(
-        `INSERT INTO tenants (id, name, slug, owner_email, is_active, plan)
-         VALUES ($1, $2, $3, $4, true, 'free')
-         RETURNING id`,
-        [tenantIdValue, tenantName, tenantSlug, normalizedEmail]
+      const tenantColsQuery = await pool.query(
+        "SELECT column_name FROM information_schema.columns WHERE table_name='tenants'"
       );
-      tenantId = tenantInsert.rows[0].id;
+      const tenantColumns = tenantColsQuery.rows.map((r) => r.column_name);
+      const valuesByColumn = {
+        id: generatedTenantId,
+        name: businessName && String(businessName).trim() ? String(businessName).trim() : 'Default',
+        slug: 'default',
+        owner_email: normalizedEmail,
+        is_active: true,
+        plan: 'free',
+      };
+
+      const insertCols = tenantColumns.filter((col) => Object.prototype.hasOwnProperty.call(valuesByColumn, col));
+      if (insertCols.length === 0) {
+        throw new Error('No compatible columns found for tenants insert');
+      }
+
+      const placeholders = insertCols.map((_, idx) => `$${idx + 1}`).join(', ');
+      const insertValues = insertCols.map((col) => valuesByColumn[col]);
+
+      await pool.query(
+        `INSERT INTO tenants (${insertCols.join(', ')}) VALUES (${placeholders})`
+        ,
+        insertValues
+      );
+      resolvedTenantId = generatedTenantId;
     }
 
     await pool.query(
       `INSERT INTO users (id, name, email, password_hash, role, tenant_id, is_active)
        VALUES ($1, $2, $3, $4, 'staff', $5, true)`,
-      [userId, normalizedName, normalizedEmail, passwordHash, tenantId]
+      [userId, normalizedName, normalizedEmail, passwordHash, resolvedTenantId]
     );
 
     return res.status(201).json({ message: 'Registration successful' });
   } catch (err) {
-    console.error('REGISTER ERROR:', err.message, err.detail, err.constraint, err.code);
+    console.error('REGISTER ERROR full:', JSON.stringify(err));
     return res.status(500).json({ error: 'Server error during registration' });
+  }
+});
+
+router.get('/debug-schema', async (req, res) => {
+  try {
+    const tenants = await pool.query('SELECT * FROM tenants LIMIT 5');
+    const users = await pool.query('SELECT id, email, role, tenant_id, is_active FROM users LIMIT 5');
+    const tenantsColumns = await pool.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_name = 'tenants'
+    `);
+    const usersColumns = await pool.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_name = 'users'
+    `);
+    res.json({
+      tenants_rows: tenants.rows,
+      tenants_columns: tenantsColumns.rows,
+      users_rows: users.rows,
+      users_columns: usersColumns.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
