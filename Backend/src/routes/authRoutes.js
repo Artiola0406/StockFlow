@@ -18,6 +18,7 @@ function getJwtSecret() {
 
 router.post('/register', async (req, res) => {
   const { name, email, password, businessName } = req.body;
+  console.log('REGISTER ATTEMPT:', { name, email });
 
   try {
     if (!name || !email || !password) {
@@ -34,17 +35,35 @@ router.post('/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const userId = `u-${Date.now()}`;
-    void businessName;
+    const tenantResult = await pool.query('SELECT id FROM tenants ORDER BY created_at ASC LIMIT 1');
+    let tenantId;
+
+    if (tenantResult.rows.length > 0) {
+      tenantId = tenantResult.rows[0].id;
+    } else {
+      const timestamp = Date.now();
+      const tenantName = businessName && String(businessName).trim() ? String(businessName).trim() : 'Default Tenant';
+      const tenantIdValue = `tenant-${timestamp}`;
+      const tenantSlugBase = tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'default-tenant';
+      const tenantSlug = `${tenantSlugBase}-${timestamp}`;
+      const tenantInsert = await pool.query(
+        `INSERT INTO tenants (id, name, slug, owner_email, is_active, plan)
+         VALUES ($1, $2, $3, $4, true, 'free')
+         RETURNING id`,
+        [tenantIdValue, tenantName, tenantSlug, normalizedEmail]
+      );
+      tenantId = tenantInsert.rows[0].id;
+    }
 
     await pool.query(
       `INSERT INTO users (id, name, email, password_hash, role, tenant_id, is_active)
-       VALUES ($1, $2, $3, $4, 'staff', 1, true)`,
-      [userId, normalizedName, normalizedEmail, passwordHash]
+       VALUES ($1, $2, $3, $4, 'staff', $5, true)`,
+      [userId, normalizedName, normalizedEmail, passwordHash, tenantId]
     );
 
     return res.status(201).json({ message: 'Registration successful' });
-  } catch (error) {
-    console.error('Registration error:', error);
+  } catch (err) {
+    console.error('REGISTER ERROR:', err.message, err.detail, err.constraint, err.code);
     return res.status(500).json({ error: 'Server error during registration' });
   }
 });
