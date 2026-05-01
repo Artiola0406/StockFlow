@@ -12,6 +12,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
 const authRoutes = require('./routes/authRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
 const { authenticate, requirePermission } = require('./middlewares/authMiddleware');
 
 const app = express();
@@ -21,12 +22,13 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
-app.use('/api/products', authenticate, productRoutes);
+app.use('/api/products', ...requirePermission('products'), productRoutes);
 app.use('/api/warehouses', ...requirePermission('warehouses'), warehouseRoutes);
 app.use('/api/suppliers', ...requirePermission('suppliers'), supplierRoutes);
 app.use('/api/customers', ...requirePermission('customers'), customerRoutes);
 app.use('/api/orders', ...requirePermission('orders'), orderRoutes);
 app.use('/api/stockmovements', ...requirePermission('stockmovements'), stockMovementRoutes);
+app.use('/api/tenants', authenticate, tenantRoutes);
 
 const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
 const webDist = path.join(__dirname, '../../web/dist');

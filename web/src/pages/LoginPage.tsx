@@ -20,7 +20,7 @@ export function LoginPage() {
     )
   }
 
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +29,7 @@ export function LoginPage() {
 
     try {
       await login(email, password)
-      window.location.href = '/dashboard'
+      window.location.href = '/'
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
       if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {

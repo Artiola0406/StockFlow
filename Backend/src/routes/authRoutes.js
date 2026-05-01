@@ -17,12 +17,16 @@ function getJwtSecret() {
 }
 
 router.post('/register', async (req, res) => {
-  const { name, email, password, businessName } = req.body;
-  console.log('REGISTER ATTEMPT:', { name, email });
+  const { name, email, password } = req.body;
+  const businessName = (req.body.businessName || '').trim() || name;
+  console.log('REGISTER ATTEMPT:', { name, email, businessName });
 
   try {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
+    }
+    if (!(req.body.businessName || '').trim()) {
+      return res.status(400).json({ error: 'Business name is required' });
     }
 
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -30,22 +34,95 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
-    const tenantId = 'tenant-' + Date.now();
-    await pool.query(
-      'INSERT INTO tenants (id, name, slug, owner_email, is_active, plan, created_at) VALUES ($1, $2, $3, $4, true, $5, NOW())',
-      [tenantId, businessName || name, tenantId, email, 'free']
-    );
+    let slugBase = businessName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!slugBase) {
+      return res.status(400).json({ error: 'Business name must contain at least one letter or number' });
+    }
 
-    const userId = 'user-' + Date.now();
-    const hash = await bcrypt.hash(password, 10);
+    const tenantId = `tenant-${Date.now()}`;
 
-    await pool.query(
-      `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active, created_at)
-       VALUES ($1, $2, $3, $4, 'staff', 'staff', $5, true, NOW())`,
-      [userId, name, email, hash, tenantId]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    return res.status(201).json({ message: 'Registration successful' });
+      let slug = slugBase;
+      let slugOk = false;
+      for (let i = 0; i < 500; i++) {
+        slug = i === 0 ? slugBase : `${slugBase}${i}`;
+        const clash = await client.query('SELECT id FROM tenants WHERE slug = $1', [slug]);
+        if (clash.rows.length === 0) {
+          slugOk = true;
+          break;
+        }
+      }
+      if (!slugOk) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Could not create tenant slug' });
+      }
+
+      const managerEmailResolved = `menaxher${slug}@stockflow.com`;
+      const staffEmailResolved = `staf${slug}@stockflow.com`;
+
+      const dupSyntheticTx = await client.query(
+        'SELECT id FROM users WHERE email = ANY($1::text[])',
+        [[managerEmailResolved, staffEmailResolved]]
+      );
+      if (dupSyntheticTx.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          error: 'Team emails already exist for this slug; choose a different business name.',
+        });
+      }
+
+      await client.query(
+        'INSERT INTO tenants (id, name, slug, owner_email, is_active, plan, created_at) VALUES ($1,$2,$3,$4,true,$5,NOW())',
+        [tenantId, businessName, slug, email, 'free']
+      );
+
+      const ts = Date.now();
+      const ownerId = `user-${ts}`;
+      const managerId = `user-${ts + 1}`;
+      const staffId = `user-${ts + 2}`;
+
+      const ownerHash = await bcrypt.hash(password, 10);
+      await client.query(
+        `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
+        [ownerId, name, email, ownerHash, 'super_admin', 'super_admin', tenantId]
+      );
+
+      const managerPassword = `${businessName}2024!`;
+      const managerHash = await bcrypt.hash(managerPassword, 10);
+      await client.query(
+        `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
+        [managerId, `Menaxher - ${businessName}`, managerEmailResolved, managerHash, 'manager', 'manager', tenantId]
+      );
+
+      const staffPassword = `${businessName}2024!`;
+      const staffHash = await bcrypt.hash(staffPassword, 10);
+      await client.query(
+        `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
+        [staffId, `Staf - ${businessName}`, staffEmailResolved, staffHash, 'staff', 'staff', tenantId]
+      );
+
+      await client.query('COMMIT');
+
+      return res.status(201).json({
+        message: 'Regjistrimi u krye me sukses',
+        credentials: {
+          owner: { email, password: '(fjalëkalimi juaj)' },
+          manager: { email: managerEmailResolved, password: managerPassword },
+          staff: { email: staffEmailResolved, password: staffPassword },
+        },
+      });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('REGISTER ERROR:', err.message, err.detail, err.code);
     return res.status(500).json({ error: 'Server error during registration' });

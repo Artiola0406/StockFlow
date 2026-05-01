@@ -12,13 +12,24 @@ interface User {
   permissions?: string[]
 }
 
+export interface RegistrationCredentials {
+  owner: { email: string; password: string }
+  manager: { email: string; password: string }
+  staff: { email: string; password: string }
+}
+
 interface AuthContextType {
   user: User | null
   token: string | null
   loading: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (name: string, email: string, password: string, businessName?: string) => Promise<boolean>
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    businessName?: string
+  ) => Promise<{ message?: string; credentials: RegistrationCredentials }>
   logout: () => void
   refreshUser: () => Promise<void>
   hasPermission: (page: string) => boolean
@@ -26,10 +37,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+/** Mirrors Backend/src/config/auth.js + UI-only keys (dashboard, reports, users, tenants). */
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ['*'],
-  manager: ['dashboard', 'products', 'warehouses', 'suppliers', 'orders', 'customers', 'reports', 'stockmovements'],
-  staff: ['dashboard', 'products', 'stockmovements'],
+  manager: ['products', 'warehouses', 'suppliers', 'customers', 'orders', 'stockmovements'],
+  staff: ['products', 'orders', 'stockmovements'],
 }
 
 function clearStoredSession() {
@@ -128,7 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ name, email, password, businessName }),
       })
 
-      let data: { error?: string } = {}
+      let data: {
+        error?: string
+        message?: string
+        credentials?: RegistrationCredentials
+      } = {}
       try {
         data = await res.json()
       } catch {
@@ -139,7 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || 'Registration failed')
       }
 
-      return true
+      if (!data.credentials) {
+        throw new Error('Registration succeeded but credentials were not returned')
+      }
+
+      return { message: data.message, credentials: data.credentials }
     } catch (error) {
       if (error instanceof TypeError) {
         throw new Error('Cannot connect to server')

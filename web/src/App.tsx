@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { UsersPage } from './pages/UsersPage'
+import { TenantsPage } from './pages/TenantsPage'
 
 export default function App() {
   return (
@@ -24,14 +25,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route
-              index
-              element={
-                <ProtectedRoute requiredPage="dashboard">
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route index element={<DashboardPage />} />
             <Route
               path="products"
               element={
@@ -77,6 +71,14 @@ export default function App() {
               element={
                 <ProtectedRoute requiredPage="customers">
                   <CustomersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="tenants"
+              element={
+                <ProtectedRoute requiredPage="tenants">
+                  <TenantsPage />
                 </ProtectedRoute>
               }
             />

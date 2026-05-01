@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middlewares/authMiddleware');
+const { authenticate, authorize } = require('../middlewares/authMiddleware');
 const { tenantFilter } = require('../middlewares/tenantMiddleware');
 const pool = require('../config/database');
 
@@ -85,7 +85,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authorize('super_admin', 'manager'), async (req, res) => {
   try {
     const { name, location, is_active } = req.body;
 
@@ -136,7 +136,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorize('super_admin'), async (req, res) => {
   try {
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(

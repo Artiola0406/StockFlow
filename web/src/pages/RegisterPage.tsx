@@ -1,8 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Package, Eye, EyeOff, AlertCircle, Loader2, User, Mail, Building, Lock } from 'lucide-react'
+import {
+  Package,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2,
+  User,
+  Mail,
+  Building,
+  Lock,
+  Copy,
+  Check,
+} from 'lucide-react'
 import { cn } from '../lib/cn'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, type RegistrationCredentials } from '../context/AuthContext'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -15,12 +27,41 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [credentials, setCredentials] = useState<RegistrationCredentials | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [countdown, setCountdown] = useState(10)
+  const skipAutoRedirectRef = useRef(false)
+
+  const goToLogin = () => {
+    skipAutoRedirectRef.current = true
+    navigate('/login', { replace: true })
+  }
+
+  useEffect(() => {
+    if (!credentials) return
+    skipAutoRedirectRef.current = false
+    setCountdown(10)
+  }, [credentials])
+
+  useEffect(() => {
+    if (!credentials || countdown <= 0) return
+    const id = window.setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => window.clearTimeout(id)
+  }, [credentials, countdown])
+
+  useEffect(() => {
+    if (!credentials || countdown > 0 || skipAutoRedirectRef.current) return
+    navigate('/login', { replace: true })
+  }, [credentials, countdown, navigate])
 
   const validateForm = () => {
     if (!name?.trim()) {
       setError('Name is required')
+      return false
+    }
+    if (!businessName?.trim()) {
+      setError('Emri i biznesit është i detyrueshëm')
       return false
     }
     if (!email?.trim()) {
@@ -46,17 +87,13 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setSuccess(null)
 
     if (!validateForm()) return
 
     setSubmitting(true)
     try {
-      await register(name.trim(), email.trim().toLowerCase(), password, businessName.trim())
-      setSuccess('Registration successful. Redirecting to login...')
-      setTimeout(() => {
-        navigate('/login', { replace: true })
-      }, 2000)
+      const result = await register(name.trim(), email.trim().toLowerCase(), password, businessName.trim())
+      setCredentials(result.credentials)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
       if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
@@ -67,6 +104,147 @@ export function RegisterPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const formatCredentialsForClipboard = (c: RegistrationCredentials, biz: string) =>
+    [
+      'StockFlow — Kredencialet e ekipit',
+      '',
+      `👑 Admin (ju): ${c.owner.email}`,
+      `   Fjalëkalimi: ${c.owner.password}`,
+      '',
+      `👔 Menaxheri:`,
+      `   Email: ${c.manager.email}`,
+      `   Fjalëkalimi: ${c.manager.password}`,
+      '',
+      `👷 Stafi:`,
+      `   Email: ${c.staff.email}`,
+      `   Fjalëkalimi: ${c.staff.password}`,
+      '',
+      `(Biznesi: ${biz})`,
+    ].join('\n')
+
+  const handleCopyCredentials = async () => {
+    if (!credentials) return
+    const text = formatCredentialsForClipboard(credentials, businessName.trim())
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2200)
+    } catch {
+      setError('Nuk mund të kopjohet në clipboard')
+    }
+  }
+
+  if (credentials) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-[#e2e8f0]">
+        <div
+          className="pointer-events-none absolute inset-0 animate-cyber-gradient opacity-90"
+          style={{
+            background:
+              'linear-gradient(125deg, #030712 0%, #0f172a 25%, #1e1b4b 50%, #0c4a6e 75%, #030712 100%)',
+            backgroundSize: '200% 200%',
+          }}
+        />
+        <div
+          className="pointer-events-none absolute -left-1/4 top-0 h-[55vh] w-[55vh] rounded-full opacity-70"
+          style={{
+            background: 'radial-gradient(circle, rgba(56,189,248,0.35) 0%, transparent 65%)',
+            animation: 'cyber-pulse-glow 8s ease-in-out infinite',
+          }}
+        />
+        <div
+          className="pointer-events-none absolute -right-1/4 bottom-0 h-[50vh] w-[50vh] rounded-full opacity-60"
+          style={{
+            background: 'radial-gradient(circle, rgba(167,139,250,0.4) 0%, transparent 68%)',
+            animation: 'cyber-pulse-glow 10s ease-in-out infinite 1s',
+          }}
+        />
+
+        <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+          <div
+            className={cn(
+              'w-full max-w-lg rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl',
+              'shadow-[0_0_60px_rgba(34,211,238,0.12)] ring-1 ring-white/10',
+            )}
+          >
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-fuchsia-600 shadow-[0_0_24px_rgba(56,189,248,0.45)]">
+                <Package className="h-6 w-6 text-white" strokeWidth={2} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-100">Llogaria juaj u krijua!</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                Këto janë kredencialet për ekipin tuaj — ruajini dhe ndajini në mënyrë të sigurt.
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300/90">
+                Kredencialet e gjeneruara
+              </p>
+
+              <div className="space-y-1 border-b border-white/10 pb-4 text-sm">
+                <p className="font-semibold text-slate-200">👑 Admin (ju)</p>
+                <p className="font-mono text-cyan-200/95">{credentials.owner.email}</p>
+                <p className="text-slate-400">{credentials.owner.password}</p>
+              </div>
+
+              <div className="space-y-1 border-b border-white/10 pb-4 text-sm">
+                <p className="font-semibold text-slate-200">👔 Menaxheri</p>
+                <p className="text-slate-400">
+                  Email:{' '}
+                  <span className="font-mono text-cyan-200/95">{credentials.manager.email}</span>
+                </p>
+                <p className="text-slate-400">
+                  Fjalëkalimi:{' '}
+                  <span className="font-mono text-violet-200/95">{credentials.manager.password}</span>
+                </p>
+              </div>
+
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold text-slate-200">👷 Stafi</p>
+                <p className="text-slate-400">
+                  Email:{' '}
+                  <span className="font-mono text-cyan-200/95">{credentials.staff.email}</span>
+                </p>
+                <p className="text-slate-400">
+                  Fjalëkalimi:{' '}
+                  <span className="font-mono text-violet-200/95">{credentials.staff.password}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleCopyCredentials}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-500/35 py-3 text-sm font-semibold transition-all',
+                  'bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20',
+                )}
+              >
+                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                {copied ? 'U kopjua!' : 'Kopjo kredencialet'}
+              </button>
+              <button
+                type="button"
+                onClick={goToLogin}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all',
+                  'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-lg shadow-cyan-500/25 hover:brightness-110',
+                )}
+              >
+                Vazhdo te kyçja
+              </button>
+            </div>
+            <p className="mt-4 text-center text-xs text-slate-500">
+              Ridrejtim automatik për <span className="font-mono text-cyan-400/90">{countdown}</span>s…
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -141,15 +319,6 @@ export function RegisterPage() {
                 </div>
               </div>
             )}
-            {success && (
-              <div
-                role="status"
-                className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 sm:px-4 py-3 text-sm text-emerald-300"
-              >
-                {success}
-              </div>
-            )}
-
             {/* Name Field */}
             <div>
               <label htmlFor="register-name" className="mb-1.5 block text-xs font-medium text-slate-400">

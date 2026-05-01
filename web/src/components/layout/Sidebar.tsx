@@ -26,9 +26,9 @@ const nav = [
   { to: '/suppliers', label: 'Furnitorët', icon: Truck, permission: 'suppliers' as const },
   { to: '/orders', label: 'Porositë', icon: ClipboardList, permission: 'orders' as const },
   { to: '/customers', label: 'Klientët', icon: Users, permission: 'customers' as const },
+  { to: '/tenants', label: 'Ekipi im', icon: Users, permission: 'tenants' as const },
   { to: '/reports', label: 'Raportet', icon: BarChart3, permission: 'reports' as const },
   { to: '/users', label: 'Përdoruesit', icon: UserCog, permission: 'users' as const },
-  { to: '/tenants', label: 'Tenants', icon: Users, permission: 'tenants' as const },
 ]
 
 function initialsFromName(name: string) {
@@ -54,6 +54,21 @@ function roleLabel(user_role: string) {
   return 'Staff'
 }
 
+function allowedNavPaths(role: string | undefined): Set<string> | null {
+  if (role === 'super_admin') return null
+  if (role === 'manager') {
+    return new Set([
+      '/products',
+      '/warehouses',
+      '/suppliers',
+      '/customers',
+      '/orders',
+      '/stockmovements',
+    ])
+  }
+  return new Set(['/products', '/orders', '/stockmovements'])
+}
+
 function Aside({
   collapsed,
   onMobileClose,
@@ -66,11 +81,10 @@ function Aside({
   showCollapseControl: boolean
 }) {
   const { user, hasPermission, logout } = useAuth()
-  const visibleNav = nav.filter((item) => hasPermission(item.permission))
-  
-  // Filter out Tenants menu for non-super_admin users
-  const filteredNav = visibleNav.filter(item => 
-    item.permission !== 'tenants' || user?.role === 'super_admin'
+  const paths = allowedNavPaths(user?.role)
+  const filteredNav = nav.filter(
+    (item) =>
+      (paths == null || paths.has(item.to)) && hasPermission(item.permission),
   )
 
   return (
