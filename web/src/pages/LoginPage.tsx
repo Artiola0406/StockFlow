@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { Package, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
 
 export function LoginPage() {
-  const { user, isLoading: authLoading, login } = useAuth()
-  const navigate = useNavigate()
+  const { user, isLoading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -27,11 +26,36 @@ export function LoginPage() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
+
     try {
-      await login(email, password)
-      navigate('/dashboard', { replace: true })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kyçja dështoi')
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      let data: { success?: boolean; token?: string; user?: unknown; error?: string; message?: string } = {}
+      try {
+        data = await response.json()
+      } catch {
+        data = {}
+      }
+
+      if (!response.ok || !data.success) {
+        setError(data.error || data.message || 'Kyçja dështoi')
+        return
+      }
+
+      if (!data.token || !data.user) {
+        setError('Kyçja dështoi')
+        return
+      }
+
+      localStorage.setItem('stockflow_token', data.token)
+      localStorage.setItem('stockflow_user', JSON.stringify(data.user))
+      window.location.href = '/dashboard'
+    } catch {
+      setError('Cannot connect to server')
     } finally {
       setSubmitting(false)
     }

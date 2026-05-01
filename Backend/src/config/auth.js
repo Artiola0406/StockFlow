@@ -1,6 +1,6 @@
 module.exports = {
   JWT_SECRET: process.env.JWT_SECRET || 'stockflow-secret-2026',
-  JWT_EXPIRES_IN: '24h',
+  JWT_EXPIRES_IN: '7d',
   ROLES: {
     SUPER_ADMIN: 'super_admin',
     MANAGER: 'manager',

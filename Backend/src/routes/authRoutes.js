@@ -3,22 +3,33 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const { JWT_EXPIRES_IN } = require('../config/auth');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET;
 
 function getIpAddress(req) {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 }
 
-function createSafeSlug(value) {
-  return value
-    .toLowerCase()
-    .replace(/ë/g, 'e')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  return secret;
+}
+
+async function writeLoginLog(email, success, ip, message) {
+  try {
+    await pool.query('INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)', [
+      email,
+      success,
+      ip,
+      message
+    ]);
+  } catch (error) {
+    console.error('Failed to write login log:', error);
+  }
 }
 
 function verifyTokenFromHeader(authHeader) {
@@ -29,7 +40,7 @@ function verifyTokenFromHeader(authHeader) {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     return { decoded };
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -40,89 +51,70 @@ function verifyTokenFromHeader(authHeader) {
 }
 
 router.post('/register', async (req, res) => {
-  const { name, email, password, businessName } = req.body;
+  const { name, email, password, role, user_role, tenant_id } = req.body;
   const ip = getIpAddress(req);
 
   try {
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: 'Emri është i detyrueshëm.' });
+      return res.status(400).json({ error: 'Name is required' });
     }
     if (!email || !email.trim()) {
-      return res.status(400).json({ success: false, message: 'Email është i detyrueshëm.' });
+      return res.status(400).json({ error: 'Email is required' });
     }
     if (!password) {
-      return res.status(400).json({ success: false, message: 'Fjalëkalimi është i detyrueshëm.' });
-    }
-    if (!businessName || !businessName.trim()) {
-      return res.status(400).json({ success: false, message: 'Emri i biznesit është i detyrueshëm.' });
+      return res.status(400).json({ error: 'Password is required' });
     }
     if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Fjalëkalimi duhet të ketë së paku 6 karaktere.' });
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
     const cleanEmail = email.toLowerCase().trim();
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [cleanEmail]);
     if (existing.rows.length > 0) {
-      return res.status(400).json({ success: false, message: 'Ky email është tashmë i regjistruar.' });
+      return res.status(400).json({ error: 'Email already exists' });
     }
-
-    const now = Date.now();
-    const tenantId = `tenant-${now}`;
-    const tenantSlugBase = createSafeSlug(businessName.trim()) || `biznes-${now}`;
-    const tenantSlug = `${tenantSlugBase}-${now}`;
-
-    await pool.query(
-      'INSERT INTO tenants (id, name, slug, owner_email, is_active) VALUES ($1, $2, $3, $4, true)',
-      [tenantId, businessName.trim(), tenantSlug, cleanEmail]
-    );
 
     const userId = `u-${Date.now()}`;
     const hash = await bcrypt.hash(password, 10);
+    const effectiveRole = user_role || role || 'staff';
+    const effectiveTenantId = tenant_id ?? 1;
 
     await pool.query(
-      `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active)
-       VALUES ($1, $2, $3, $4, 'manager', 'manager', $5, true)`,
-      [userId, name.trim(), cleanEmail, hash, tenantId]
+      `INSERT INTO users (id, name, email, password_hash, role, user_role, tenant_id, is_active) 
+       VALUES ($1, $2, $3, $4, $5, $5, $6, true)`,
+      [userId, name.trim(), cleanEmail, hash, effectiveRole, effectiveTenantId]
     );
 
-    pool
-      .query('INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)', [
-        cleanEmail,
-        true,
-        ip,
-        'Regjistrim i suksesshëm'
-      ])
-      .catch(() => {});
+    await writeLoginLog(cleanEmail, true, ip, 'Regjistrim i suksesshëm');
 
     const token = jwt.sign(
       {
         id: userId,
         name: name.trim(),
         email: cleanEmail,
-        role: 'manager',
-        user_role: 'manager',
-        tenant_id: tenantId
+        role: effectiveRole,
+        user_role: effectiveRole,
+        tenant_id: effectiveTenantId
       },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      getJwtSecret(),
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     return res.status(201).json({
       success: true,
-      message: 'Regjistrimi u krye me sukses.',
       token,
       user: {
         id: userId,
         name: name.trim(),
         email: cleanEmail,
-        role: 'manager',
-        user_role: 'manager',
-        tenant_id: tenantId
+        role: effectiveRole,
+        user_role: effectiveRole,
+        tenant_id: effectiveTenantId
       }
     });
   } catch (error) {
-    console.error('Gabim i papritur në regjistrim:', error.stack || error);
-    return res.status(500).json({ success: false, message: 'Gabim i serverit.' });
+    console.error('Register error:', error);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -132,47 +124,30 @@ router.post('/login', async (req, res) => {
 
   try {
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email dhe fjalëkalimi janë të detyrueshëm.' });
+      return res.status(401).json({ error: 'Email and password are required' });
     }
 
     const cleanEmail = email.toLowerCase().trim();
     const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [cleanEmail]);
 
     if (result.rows.length === 0) {
-      pool
-        .query('INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)', [
-          cleanEmail,
-          false,
-          ip,
-          'Email i panjohur'
-        ])
-        .catch(() => {});
-      return res.status(401).json({ success: false, message: 'Email ose fjalëkalim i gabuar.' });
+      await writeLoginLog(cleanEmail, false, ip, 'Kyçje e dështuar');
+      const inactiveResult = await pool.query('SELECT id FROM users WHERE email = $1 AND is_active = false', [cleanEmail]);
+      if (inactiveResult.rows.length > 0) {
+        return res.status(401).json({ error: 'Account is inactive' });
+      }
+      return res.status(401).json({ error: 'User not found' });
     }
 
     const user = result.rows[0];
     const isValid = await bcrypt.compare(password, user.password_hash || '');
 
     if (!isValid) {
-      pool
-        .query('INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)', [
-          cleanEmail,
-          false,
-          ip,
-          'Fjalëkalim i gabuar'
-        ])
-        .catch(() => {});
-      return res.status(401).json({ success: false, message: 'Email ose fjalëkalim i gabuar.' });
+      await writeLoginLog(cleanEmail, false, ip, 'Fjalëkalim i gabuar');
+      return res.status(401).json({ error: 'Wrong password' });
     }
 
-    pool
-      .query('INSERT INTO login_logs (email, success, ip_address, message) VALUES ($1, $2, $3, $4)', [
-        cleanEmail,
-        true,
-        ip,
-        'Kyçje e suksesshme'
-      ])
-      .catch(() => {});
+    await writeLoginLog(cleanEmail, true, ip, 'Kyçje e suksesshme');
 
     const userRole = user.user_role || 'manager';
     const token = jwt.sign(
@@ -184,13 +159,12 @@ router.post('/login', async (req, res) => {
         user_role: userRole,
         tenant_id: user.tenant_id
       },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      getJwtSecret(),
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     return res.status(200).json({
       success: true,
-      message: 'U kyçët me sukses!',
       token,
       user: {
         id: user.id,
@@ -202,8 +176,8 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Gabim i papritur në login:', error.stack || error);
-    return res.status(500).json({ success: false, message: 'Gabim i serverit.' });
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
