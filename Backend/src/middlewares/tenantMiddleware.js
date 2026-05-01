@@ -1,21 +1,16 @@
 const { authenticate } = require('./authMiddleware');
 
 const tenantFilter = (req, res, next) => {
-  // Super admin can see all data (pass special header)
+  const fallbackTenantId = 'tenant-default';
+  const userTenantId = req.user?.tenant_id || fallbackTenantId;
+
+  // Only super_admin can impersonate another tenant via header.
   if (req.user?.user_role === 'super_admin') {
-    req.tenantId = req.headers['x-tenant-id'] || null;
+    req.tenantId = req.headers['x-tenant-id'] || userTenantId;
     return next();
   }
 
-  // All other users only see their tenant data
-  if (!req.user?.tenant_id) {
-    return res.status(403).json({
-      success: false,
-      message: 'Tenant ID mungon.'
-    });
-  }
-
-  req.tenantId = req.user.tenant_id;
+  req.tenantId = userTenantId;
   next();
 };
 

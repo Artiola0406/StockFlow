@@ -30,20 +30,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
-    let tenantId;
-    const tenantResult = await pool.query('SELECT id FROM tenants WHERE is_active = true LIMIT 1');
-
-    if (tenantResult.rows.length > 0) {
-      tenantId = tenantResult.rows[0].id;
-    } else {
-      const newTenantId = 'tenant-' + Date.now();
-      const slug = 'tenant-' + Date.now();
-      await pool.query(
-        'INSERT INTO tenants (id, name, slug, owner_email, is_active, plan, created_at) VALUES ($1, $2, $3, $4, true, $5, NOW())',
-        [newTenantId, businessName || 'Default', slug, email, 'free']
-      );
-      tenantId = newTenantId;
-    }
+    const tenantId = 'tenant-' + Date.now();
+    await pool.query(
+      'INSERT INTO tenants (id, name, slug, owner_email, is_active, plan, created_at) VALUES ($1, $2, $3, $4, true, $5, NOW())',
+      [tenantId, businessName || name, tenantId, email, 'free']
+    );
 
     const userId = 'user-' + Date.now();
     const hash = await bcrypt.hash(password, 10);
@@ -108,6 +99,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       {
         id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
         user_role: user.user_role,

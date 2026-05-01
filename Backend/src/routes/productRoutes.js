@@ -23,16 +23,11 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    let query = 'SELECT * FROM products';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    query += ' ORDER BY created_at DESC';
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT * FROM products WHERE tenant_id = $1 ORDER BY created_at DESC',
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -86,24 +81,34 @@ router.post('/', async (req, res) => {
     });
 
     const id = Date.now().toString();
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     console.log('Creating product for tenant:', tenantId);
 
-    const countResult = await pool.query('SELECT COUNT(*)::int AS total FROM products');
-    const nextNumber = (countResult.rows[0]?.total || 0) + 1;
-    const finalSku = (sku || '').trim() || `SKU-${String(nextNumber).padStart(3, '0')}`;
-
-    let skuToUse = finalSku;
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM products WHERE tenant_id = $1',
+      [tenantId]
+    );
+    let attempt = (countResult.rows[0].total || 0) + 1;
+    let skuToUse = sku || '';
     let skuExists = true;
-    let attempt = nextNumber;
 
-    while (skuExists) {
-      const check = await pool.query('SELECT id FROM products WHERE sku = $1', [skuToUse]);
-      if (check.rows.length === 0) {
-        skuExists = false;
-      } else {
-        attempt++;
-        skuToUse = `SKU-${String(attempt).padStart(3, '0')}`;
+    if (!skuToUse) {
+      while (skuExists) {
+        skuToUse = 'SKU-' + String(attempt).padStart(3, '0');
+        const check = await pool.query(
+          'SELECT id FROM products WHERE sku = $1 AND tenant_id = $2',
+          [skuToUse, tenantId]
+        );
+        if (check.rows.length === 0) skuExists = false;
+        else attempt++;
+      }
+    } else {
+      const check = await pool.query(
+        'SELECT id FROM products WHERE sku = $1 AND tenant_id = $2',
+        [skuToUse, tenantId]
+      );
+      if (check.rows.length > 0) {
+        return res.status(400).json({ success: false, message: 'SKU already exists for this tenant.' });
       }
     }
 
@@ -122,9 +127,10 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const existing = await pool.query(
       'SELECT * FROM products WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, req.tenantId]
+      [req.params.id, tenantId]
     );
     if (existing.rows.length === 0) {
       return res.status(404).json({
@@ -137,7 +143,7 @@ router.put('/:id', async (req, res) => {
     const result = await pool.query(
       `UPDATE products SET name=$1, sku=$2, price=$3, quantity=$4, category=$5
        WHERE id=$6 AND tenant_id=$7 RETURNING *`,
-      [name, sku, price, quantity, category, req.params.id, req.tenantId]
+      [name, sku, price, quantity, category, req.params.id, tenantId]
     );
 
     res.json({ success: true, data: result.rows[0] });
@@ -148,9 +154,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
       'DELETE FROM products WHERE id = $1 AND tenant_id = $2 RETURNING id',
-      [req.params.id, req.tenantId]
+      [req.params.id, tenantId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({

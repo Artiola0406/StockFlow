@@ -23,16 +23,11 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    let query = 'SELECT * FROM orders';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    query += ' ORDER BY created_at DESC';
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT * FROM orders WHERE tenant_id = $1 ORDER BY created_at DESC',
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -75,15 +70,11 @@ router.get('/by-status/:status', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    let query = 'SELECT * FROM orders WHERE id = $1';
-    const params = [req.params.id];
-
-    if (req.tenantId) {
-      query += ' AND tenant_id = $2';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT * FROM orders WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, tenantId]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Porosia nuk u gjet.' });
     }
@@ -103,7 +94,7 @@ router.post('/', async (req, res) => {
     });
 
     const id = Date.now().toString();
-    const tenantId = req.tenantId || req.user.tenant_id;
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
 
     const result = await pool.query(
       `INSERT INTO orders (id, customer_id, product_id, quantity, total_amount, status, tenant_id)
@@ -119,9 +110,10 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const existing = await pool.query(
       'SELECT * FROM orders WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, req.tenantId]
+      [req.params.id, tenantId]
     );
     if (existing.rows.length === 0) {
       return res.status(404).json({
@@ -134,7 +126,7 @@ router.put('/:id', async (req, res) => {
     const result = await pool.query(
       `UPDATE orders SET customer_id=$1, product_id=$2, quantity=$3, total_amount=$4, status=$5
        WHERE id=$6 AND tenant_id=$7 RETURNING *`,
-      [customer_id, product_id, quantity, total_amount, status, req.params.id, req.tenantId]
+      [customer_id, product_id, quantity, total_amount, status, req.params.id, tenantId]
     );
 
     res.json({ success: true, data: result.rows[0] });
@@ -145,9 +137,10 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
       'DELETE FROM orders WHERE id = $1 AND tenant_id = $2 RETURNING id',
-      [req.params.id, req.tenantId]
+      [req.params.id, tenantId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({
