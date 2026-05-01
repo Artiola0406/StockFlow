@@ -34,7 +34,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tenants', authenticate, tenantRoutes);
 
-const pagesPath = path.join(__dirname, '../../Frontend/src/pages');
 const webDist = path.join(__dirname, '../../web/dist');
 
 if (fs.existsSync(path.join(webDist, 'index.html'))) {
@@ -44,25 +43,13 @@ if (fs.existsSync(path.join(webDist, 'index.html'))) {
     res.sendFile(path.join(webDist, 'index.html'));
   });
 } else {
-  app.use(express.static(pagesPath));
-
-  const pages = [
-    { route: 'dashboard', file: 'Dashboard.html' },
-    { route: 'products', file: 'Products.html' },
-    { route: 'warehouses', file: 'Warehouses.html' },
-    { route: 'stockmovements', file: 'StockMovements.html' },
-    { route: 'suppliers', file: 'Suppliers.html' },
-    { route: 'orders', file: 'Orders.html' },
-    { route: 'customers', file: 'Customers.html' },
-    { route: 'reports', file: 'Reports.html' },
-  ];
-
-  pages.forEach((p) => {
-    app.get(`/${p.route}`, (req, res) => res.sendFile(path.join(pagesPath, p.file)));
-    app.get(`/${p.file}`, (req, res) => res.sendFile(path.join(pagesPath, p.file)));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res
+      .status(503)
+      .type('text/plain')
+      .send('Web UI not built. Run: cd web && npm run build');
   });
-
-  app.get('/', (req, res) => res.sendFile(path.join(pagesPath, 'Dashboard.html')));
 }
 
 const PORT = process.env.PORT || 5000;

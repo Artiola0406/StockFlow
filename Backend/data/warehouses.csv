@@ -1,6 +1,0 @@
-id,name,location,capacity,isActive,createdAt
-1,Depo Qendrore,Prishtine,5000,true,2026-01-01T10:00:00.000Z
-2,Depo Veriore,Mitrovice,3000,true,2026-01-02T10:00:00.000Z
-3,Depo Jugore,Prizren,2500,true,2026-01-03T10:00:00.000Z
-4,Depo Lindore,Gjilan,1800,true,2026-01-04T10:00:00.000Z
-5,Depo Perendimore,Peje,2000,false,2026-01-05T10:00:00.000Z
