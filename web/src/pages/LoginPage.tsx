@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
 
 export function LoginPage() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -28,34 +28,15 @@ export function LoginPage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-
-      let data: { success?: boolean; token?: string; user?: unknown; error?: string; message?: string } = {}
-      try {
-        data = await response.json()
-      } catch {
-        data = {}
-      }
-
-      if (!response.ok || !data.success) {
-        setError(data.error || data.message || 'Kyçja dështoi')
-        return
-      }
-
-      if (!data.token || !data.user) {
-        setError('Kyçja dështoi')
-        return
-      }
-
-      localStorage.setItem('stockflow_token', data.token)
-      localStorage.setItem('stockflow_user', JSON.stringify(data.user))
+      await login(email, password)
       window.location.href = '/dashboard'
-    } catch {
-      setError('Cannot connect to server')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed'
+      if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
+        setError('Cannot connect to server')
+      } else {
+        setError(message)
+      }
     } finally {
       setSubmitting(false)
     }

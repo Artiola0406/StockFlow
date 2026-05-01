@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Package, Eye, EyeOff, AlertCircle, Loader2, User, Mail, Building, Lock } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { useAuth } from '../context/AuthContext'
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,32 +15,29 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const validateForm = () => {
     if (!name?.trim()) {
-      setError('Emri është i detyrueshëm')
+      setError('Name is required')
       return false
     }
     if (!email?.trim()) {
-      setError('Email është i detyrueshëm')
+      setError('Email is required')
       return false
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      setError('Email nuk është i vlefshëm')
-      return false
-    }
-    if (!businessName?.trim()) {
-      setError('Emri i biznesit është i detyrueshëm')
+      setError('Email is invalid')
       return false
     }
     if (!password || password.length < 6) {
-      setError('Fjalëkalimi duhet të ketë së paku 6 karaktere')
+      setError('Password must be at least 6 characters')
       return false
     }
     if (password !== confirmPassword) {
-      setError('Fjalëkalimet nuk përputhen')
+      setError('Passwords do not match')
       return false
     }
     return true
@@ -47,35 +46,24 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSuccess(null)
 
     if (!validateForm()) return
 
     setSubmitting(true)
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name: name.trim(), 
-          email: email.trim().toLowerCase(), 
-          password, 
-          businessName: businessName.trim() 
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        setError(data.message || 'Regjistrimi dështoi')
-        return
-      }
-
-      // Store token and user to localStorage, then redirect to dashboard
-      localStorage.setItem('stockflow_token', data.token)
-      localStorage.setItem('stockflow_user', JSON.stringify(data.user))
-      navigate('/dashboard', { replace: true })
+      await register(name.trim(), email.trim().toLowerCase(), password, businessName.trim())
+      setSuccess('Registration successful. Redirecting to login...')
+      setTimeout(() => {
+        navigate('/login', { replace: true })
+      }, 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Regjistrimi dështoi')
+      const message = err instanceof Error ? err.message : 'Registration failed'
+      if (message.toLowerCase().includes('failed to fetch') || message.toLowerCase().includes('network')) {
+        setError('Cannot connect to server')
+      } else {
+        setError(message)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -151,6 +139,14 @@ export function RegisterPage() {
                   <p className="font-semibold">Regjistrimi dështoi</p>
                   <p className="mt-0.5 text-red-200/90">{error}</p>
                 </div>
+              </div>
+            )}
+            {success && (
+              <div
+                role="status"
+                className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 sm:px-4 py-3 text-sm text-emerald-300"
+              >
+                {success}
               </div>
             )}
 
