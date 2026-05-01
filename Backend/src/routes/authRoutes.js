@@ -90,6 +90,7 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [ownerId, name, email, ownerHash, 'super_admin', 'super_admin', tenantId]
       );
+      console.log('Created owner:', email);
 
       const managerPassword = `${businessName}2024!`;
       const managerHash = await bcrypt.hash(managerPassword, 10);
@@ -98,6 +99,7 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [managerId, `Menaxher - ${businessName}`, managerEmailResolved, managerHash, 'manager', 'manager', tenantId]
       );
+      console.log('Created manager:', managerEmailResolved);
 
       const staffPassword = `${businessName}2024!`;
       const staffHash = await bcrypt.hash(staffPassword, 10);
@@ -106,6 +108,7 @@ router.post('/register', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())`,
         [staffId, `Staf - ${businessName}`, staffEmailResolved, staffHash, 'staff', 'staff', tenantId]
       );
+      console.log('Created staff:', staffEmailResolved);
 
       await client.query('COMMIT');
 
@@ -117,9 +120,13 @@ router.post('/register', async (req, res) => {
           staff: { email: staffEmailResolved, password: staffPassword },
         },
       });
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('REGISTER ROLLBACK ERROR:', rollbackErr.message);
+      }
+      throw err;
     } finally {
       client.release();
     }
