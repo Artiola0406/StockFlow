@@ -45,7 +45,7 @@ export function ProductsPage() {
       const res = await apiGet<ApiListResponse<Product[]>>(path)
       setProducts(res.data ?? [])
     } catch {
-      showToast('Serveri nuk është aktiv!', 'error')
+      showToast('Të dhënat nuk mund të ngarkohen', 'error')
       setProducts([])
     } finally {
       setLoading(false)
@@ -79,13 +79,12 @@ export function ProductsPage() {
   async function addProduct() {
     const { name, sku, price, quantity, category } = form
     if (!name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
-    if (!sku.trim()) return showToast('SKU është i detyrueshëm!', 'error')
     if (!price || parseFloat(price) <= 0) return showToast('Çmimi duhet të jetë > 0!', 'error')
     if (quantity === '' || parseInt(quantity, 10) < 0)
       return showToast('Sasia nuk mund të jetë negative!', 'error')
     const res = await apiPost<ApiListResponse<Product>>('/products', {
       name: name.trim(),
-      sku: sku.trim(),
+      sku: sku.trim() || undefined,
       price,
       quantity,
       category: category.trim() || 'E pacaktuar',
@@ -165,11 +164,11 @@ export function ProductsPage() {
             />
           </div>
           <div>
-            <Label>SKU *</Label>
+            <Label>SKU</Label>
             <Input
               value={form.sku}
               onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
-              placeholder="SKU-007"
+              placeholder="Do të gjenerohet automatikisht (SKU-001)"
             />
           </div>
           <div>

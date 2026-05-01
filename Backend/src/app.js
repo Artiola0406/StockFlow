@@ -12,7 +12,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
 const authRoutes = require('./routes/authRoutes');
-const { requirePermission } = require('./middlewares/authMiddleware');
+const { authenticate, requirePermission } = require('./middlewares/authMiddleware');
 
 const app = express();
 
@@ -21,7 +21,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
-app.use('/api/products', ...requirePermission('products'), productRoutes);
+app.use('/api/products', authenticate, productRoutes);
 app.use('/api/warehouses', ...requirePermission('warehouses'), warehouseRoutes);
 app.use('/api/suppliers', ...requirePermission('suppliers'), supplierRoutes);
 app.use('/api/customers', ...requirePermission('customers'), customerRoutes);

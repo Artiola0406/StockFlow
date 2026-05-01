@@ -209,7 +209,7 @@ export function RegisterPage() {
                   id="register-business"
                   type="text"
                   autoComplete="organization"
-                  placeholder="Studio i Thonjve Erta"
+                  placeholder="Biznes i ri"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
                   disabled={submitting}

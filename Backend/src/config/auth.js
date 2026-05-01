@@ -12,7 +12,7 @@ const ROLE_PERMISSIONS = {
     'users',
     'tenants',
   ],
-  staff: ['dashboard', 'products', 'stockmovements'],
+  staff: ['dashboard', 'products', 'warehouses', 'suppliers', 'customers', 'orders', 'stockmovements'],
 };
 
 module.exports = {

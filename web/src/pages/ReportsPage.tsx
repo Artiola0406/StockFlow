@@ -23,7 +23,7 @@ export function ReportsPage() {
       const res = await apiGet<ApiListResponse<Product[]>>('/products')
       setProducts(res.data ?? [])
     } catch {
-      setError('Serveri nuk është aktiv.')
+      setError('Të dhënat nuk mund të ngarkohen')
       setProducts([])
     } finally {
       setLoading(false)

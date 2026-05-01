@@ -87,11 +87,18 @@ router.post('/', async (req, res) => {
 
     const id = Date.now().toString();
     const tenantId = req.tenantId || req.user.tenant_id;
+    let finalSku = (sku || '').trim();
+
+    if (!finalSku) {
+      const countResult = await pool.query('SELECT COUNT(*)::int AS total FROM products WHERE tenant_id = $1', [tenantId]);
+      const nextNumber = (countResult.rows[0]?.total || 0) + 1;
+      finalSku = `SKU-${String(nextNumber).padStart(3, '0')}`;
+    }
 
     const result = await pool.query(
       `INSERT INTO products (id, name, sku, price, quantity, category, tenant_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [id, name, sku, price || 0, quantity || 0, category || 'E pacaktuar', tenantId]
+      [id, name, finalSku, price || 0, quantity || 0, category || 'E pacaktuar', tenantId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
