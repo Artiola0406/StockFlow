@@ -86,24 +86,37 @@ router.post('/', async (req, res) => {
     });
 
     const id = Date.now().toString();
-    const tenantId = req.tenantId || req.user.tenant_id;
-    let finalSku = (sku || '').trim();
+    const tenantId = req.user.tenant_id || 'tenant-default';
+    console.log('Creating product for tenant:', tenantId);
 
-    if (!finalSku) {
-      const countResult = await pool.query('SELECT COUNT(*)::int AS total FROM products WHERE tenant_id = $1', [tenantId]);
-      const nextNumber = (countResult.rows[0]?.total || 0) + 1;
-      finalSku = `SKU-${String(nextNumber).padStart(3, '0')}`;
+    const countResult = await pool.query('SELECT COUNT(*)::int AS total FROM products');
+    const nextNumber = (countResult.rows[0]?.total || 0) + 1;
+    const finalSku = (sku || '').trim() || `SKU-${String(nextNumber).padStart(3, '0')}`;
+
+    let skuToUse = finalSku;
+    let skuExists = true;
+    let attempt = nextNumber;
+
+    while (skuExists) {
+      const check = await pool.query('SELECT id FROM products WHERE sku = $1', [skuToUse]);
+      if (check.rows.length === 0) {
+        skuExists = false;
+      } else {
+        attempt++;
+        skuToUse = `SKU-${String(attempt).padStart(3, '0')}`;
+      }
     }
 
     const result = await pool.query(
       `INSERT INTO products (id, name, sku, price, quantity, category, tenant_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [id, name, finalSku, price || 0, quantity || 0, category || 'E pacaktuar', tenantId]
+      [id, name, skuToUse, price || 0, quantity || 0, category || 'E pacaktuar', tenantId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    console.error('PRODUCT CREATE ERROR:', err.message, err.detail, err.code, err.constraint);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

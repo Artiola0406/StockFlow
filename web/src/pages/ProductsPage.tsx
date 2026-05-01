@@ -77,47 +77,65 @@ export function ProductsPage() {
   }, [combined])
 
   async function addProduct() {
-    const { name, sku, price, quantity, category } = form
-    if (!name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
-    if (!price || parseFloat(price) <= 0) return showToast('Çmimi duhet të jetë > 0!', 'error')
-    if (quantity === '' || parseInt(quantity, 10) < 0)
-      return showToast('Sasia nuk mund të jetë negative!', 'error')
-    const res = await apiPost<ApiListResponse<Product>>('/products', {
-      name: name.trim(),
-      sku: sku.trim() || undefined,
-      price,
-      quantity,
-      category: category.trim() || 'E pacaktuar',
-    })
-    if (res.success) {
-      showToast('Produkti u shtua me sukses!', 'success')
-      setForm({ name: '', sku: '', price: '', quantity: '', category: '' })
-      loadProducts()
-    } else showToast(res.message || 'Gabim', 'error')
+    try {
+      const { name, sku, price, quantity, category } = form
+      if (!name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
+      if (!price || parseFloat(price) <= 0) return showToast('Çmimi duhet të jetë > 0!', 'error')
+      if (quantity === '' || parseInt(quantity, 10) < 0)
+        return showToast('Sasia nuk mund të jetë negative!', 'error')
+      const res = await apiPost<ApiListResponse<Product>>('/products', {
+        name: name.trim(),
+        sku: sku.trim() || undefined,
+        price,
+        quantity,
+        category: category.trim() || 'E pacaktuar',
+      })
+      if (res.success) {
+        showToast('Produkti u shtua', 'success')
+        setForm({ name: '', sku: '', price: '', quantity: '', category: '' })
+        loadProducts()
+      } else {
+        showToast(res.message || 'Gabim gjatë shtimit të produktit', 'error')
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë shtimit të produktit', 'error')
+    }
   }
 
   async function saveUpdate() {
-    const res = await apiPut<ApiListResponse<Product>>(`/products/${edit.id}`, {
-      name: edit.name,
-      sku: edit.sku,
-      price: edit.price,
-      quantity: edit.quantity,
-      category: edit.category,
-    })
-    if (res.success) {
-      setEditOpen(false)
-      showToast('Produkti u përditësua!', 'success')
-      loadProducts()
-    } else showToast(res.message || 'Gabim', 'error')
+    try {
+      const res = await apiPut<ApiListResponse<Product>>(`/products/${edit.id}`, {
+        name: edit.name,
+        sku: edit.sku,
+        price: edit.price,
+        quantity: edit.quantity,
+        category: edit.category,
+      })
+      if (res.success) {
+        setEditOpen(false)
+        showToast('Produkti u përditësua', 'success')
+        loadProducts()
+      } else {
+        showToast(res.message || 'Gabim gjatë përditësimit', 'error')
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë përditësimit', 'error')
+    }
   }
 
   async function deleteProduct(id: string | number, name: string) {
     if (!confirm(`A jeni i sigurt për fshirjen e "${name}"?`)) return
-    const res = await apiDelete<ApiListResponse<unknown>>(`/products/${id}`)
-    if (res.success) {
-      showToast('Produkti u fshi!', 'success')
-      loadProducts()
-    } else showToast(res.message || 'Gabim', 'error')
+    try {
+      const res = await apiDelete<ApiListResponse<unknown>>(`/products/${id}`)
+      if (res.success) {
+        showToast('Produkti u fshi', 'success')
+        loadProducts()
+      } else {
+        showToast(res.message || 'Gabim gjatë fshirjes', 'error')
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë fshirjes', 'error')
+    }
   }
 
   return (
