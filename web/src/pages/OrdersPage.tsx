@@ -1,110 +1,208 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
 import { Modal } from '../components/ui/Modal'
-import { lsGet, lsSet } from '../lib/storage'
+import { Skeleton } from '../components/ui/Skeleton'
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api'
 import { formatCurrency, formatDate } from '../lib/format'
 import { useToast } from '../context/ToastContext'
-import type { OrderRow } from '../types'
+import type { ApiListResponse } from '../types'
+import { useAuth } from '../context/AuthContext'
 import { cn } from '../lib/cn'
 
-const KEY = 'orders'
-
 const STATUS_OPTS = [
-  { value: 'Ne pritje', label: 'Në pritje' },
-  { value: 'Konfirmuar', label: 'Konfirmuar' },
-  { value: 'Derguar', label: 'Dërguar' },
-  { value: 'Anuluar', label: 'Anuluar' },
+  { value: 'pending', label: 'Në pritje' },
+  { value: 'completed', label: 'Konfirmuar' },
+  { value: 'shipped', label: 'Dërguar' },
+  { value: 'cancelled', label: 'Anuluar' },
 ]
+
+interface OrderApiRow {
+  id: string
+  customer_id: string
+  product_id: string
+  customer_name?: string | null
+  product_name?: string | null
+  quantity: number | string
+  total_amount: number | string
+  status: string
+  created_at?: string
+}
+
+interface FormOption {
+  id: string
+  name: string
+  price?: string | number
+}
 
 function statusClass(s: string) {
   const map: Record<string, string> = {
-    'Ne pritje':
-      'border-amber-400/40 bg-amber-500/15 text-amber-800 dark:text-amber-200',
-    Konfirmuar: 'border-sky-400/40 bg-sky-500/15 text-sky-800 dark:text-sky-200',
-    Derguar: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
-    Anuluar: 'border-rose-400/40 bg-rose-500/15 text-rose-800 dark:text-rose-200',
+    pending: 'border-amber-400/40 bg-amber-500/15 text-amber-800 dark:text-amber-200',
+    completed: 'border-sky-400/40 bg-sky-500/15 text-sky-800 dark:text-sky-200',
+    shipped: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200',
+    cancelled: 'border-rose-400/40 bg-rose-500/15 text-rose-800 dark:text-rose-200',
   }
   return map[s] || 'border-slate-400/40 bg-slate-500/10 text-slate-700 dark:text-slate-300'
 }
 
 export function OrdersPage() {
   const { showToast } = useToast()
-  const [rows, setRows] = useState<OrderRow[]>(() => lsGet<OrderRow[]>(KEY, []))
-  const [form, setForm] = useState({
-    customerName: '',
-    productName: '',
-    quantity: '',
-    totalAmount: '',
-    status: 'Ne pritje',
-  })
-  const [editOpen, setEditOpen] = useState(false)
-  const [edit, setEdit] = useState<OrderRow | null>(null)
+  const { user } = useAuth()
+  const canDeleteOrders = user?.role === 'super_admin'
 
-  const persist = useCallback((next: OrderRow[]) => {
-    lsSet(KEY, next)
-    setRows(next)
+  const [rows, setRows] = useState<OrderApiRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [optionsLoading, setOptionsLoading] = useState(true)
+  const [customers, setCustomers] = useState<FormOption[]>([])
+  const [products, setProducts] = useState<FormOption[]>([])
+
+  const [form, setForm] = useState({
+    customer_id: '',
+    product_id: '',
+    quantity: '',
+    total_amount: '',
+    status: 'pending',
+  })
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [edit, setEdit] = useState<OrderApiRow | null>(null)
+
+  const loadOptions = useCallback(async () => {
+    setOptionsLoading(true)
+    try {
+      const res = await apiGet<
+        ApiListResponse<{ customers: FormOption[]; products: FormOption[] }>
+      >('/orders/form-options')
+      const d = res.data
+      setCustomers(d?.customers ?? [])
+      setProducts(d?.products ?? [])
+    } catch {
+      setCustomers([])
+      setProducts([])
+    } finally {
+      setOptionsLoading(false)
+    }
   }, [])
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiGet<ApiListResponse<OrderApiRow[]>>('/orders')
+      setRows(res.data ?? [])
+    } catch {
+      showToast('Porositë nuk u ngarkuan', 'error')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    loadOptions()
+  }, [loadOptions])
+
+  useEffect(() => {
+    loadOrders()
+  }, [loadOrders])
+
+  const productById = useMemo(() => {
+    const m = new Map<string, FormOption>()
+    products.forEach((p) => m.set(String(p.id), p))
+    return m
+  }, [products])
+
+  function applyProductPrice(productId: string, qtyStr: string) {
+    const p = productById.get(productId)
+    if (!p || p.price === undefined || p.price === null) return
+    const q = parseInt(qtyStr, 10)
+    if (!q || q <= 0) return
+    const unit = parseFloat(String(p.price))
+    if (Number.isNaN(unit)) return
+    setForm((f) => ({ ...f, total_amount: (unit * q).toFixed(2) }))
+  }
+
+  async function add() {
+    const { customer_id, product_id, quantity, total_amount, status } = form
+    if (!customer_id) return showToast('Zgjidhni klientin.', 'error')
+    if (!product_id) return showToast('Zgjidhni produktin.', 'error')
+    if (!quantity || parseInt(quantity, 10) <= 0) return showToast('Sasia duhet të jetë pozitive!', 'error')
+    if (!total_amount || parseFloat(total_amount) <= 0) return showToast('Totali duhet të jetë pozitiv!', 'error')
+    try {
+      await apiPost<ApiListResponse<OrderApiRow>>('/orders', {
+        customer_id,
+        product_id,
+        quantity: parseInt(quantity, 10),
+        total_amount: parseFloat(total_amount),
+        status,
+      })
+      showToast('Porosia u shtua!', 'success')
+      setForm({
+        customer_id: '',
+        product_id: '',
+        quantity: '',
+        total_amount: '',
+        status: 'pending',
+      })
+      loadOrders()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Gabim', 'error')
+    }
+  }
+
+  async function saveEdit() {
+    if (!edit) return
+    try {
+      await apiPut<ApiListResponse<OrderApiRow>>(`/orders/${edit.id}`, {
+        customer_id: edit.customer_id,
+        product_id: edit.product_id,
+        quantity: Number(edit.quantity),
+        total_amount: Number(edit.total_amount),
+        status: edit.status,
+      })
+      setEditOpen(false)
+      showToast('Porosia u përditësua!', 'success')
+      loadOrders()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Gabim', 'error')
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm('A jeni i sigurt?')) return
+    try {
+      await apiDelete<ApiListResponse<unknown>>(`/orders/${id}`)
+      showToast('Porosia u fshi!', 'success')
+      loadOrders()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Gabim', 'error')
+    }
+  }
 
   const stats = useMemo(
     () => ({
       total: rows.length,
-      confirmed: rows.filter((o) => o.status === 'Konfirmuar').length,
-      pending: rows.filter((o) => o.status === 'Ne pritje').length,
+      confirmed: rows.filter((o) => o.status === 'completed').length,
+      pending: rows.filter((o) => o.status === 'pending').length,
     }),
     [rows],
   )
 
-  function add() {
-    const { customerName, productName, quantity, totalAmount, status } = form
-    if (!customerName.trim()) return showToast('Klienti është i detyrueshëm!', 'error')
-    if (!productName.trim()) return showToast('Produkti është i detyrueshëm!', 'error')
-    if (!quantity || parseInt(quantity, 10) <= 0) return showToast('Sasia duhet të jetë pozitive!', 'error')
-    if (!totalAmount || parseFloat(totalAmount) <= 0) return showToast('Totali duhet të jetë pozitiv!', 'error')
-    persist([
-      ...rows,
-      {
-        id: Date.now().toString(),
-        customerName: customerName.trim(),
-        productName: productName.trim(),
-        quantity,
-        totalAmount,
-        status,
-        date: new Date().toISOString(),
-      },
-    ])
-    showToast('Porosia u shtua!', 'success')
-    setForm({
-      customerName: '',
-      productName: '',
-      quantity: '',
-      totalAmount: '',
-      status: 'Ne pritje',
-    })
-  }
-
-  function saveEdit() {
-    if (!edit) return
-    persist(rows.map((o) => (o.id === edit.id ? edit : o)))
-    setEditOpen(false)
-    showToast('Porosia u përditësua!', 'success')
-  }
-
-  function remove(id: string) {
-    if (!confirm('A jeni i sigurt?')) return
-    persist(rows.filter((o) => o.id !== id))
-    showToast('Porosia u fshi!', 'success')
-  }
-
   const sorted = useMemo(() => [...rows].reverse(), [rows])
+
+  const displayCustomer = (o: OrderApiRow) =>
+    o.customer_name?.trim() || o.customer_id || '—'
+  const displayProduct = (o: OrderApiRow) =>
+    o.product_name?.trim() || o.product_id || '—'
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Porositë</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxho porositë (localStorage).</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Porosi të lidhura me klientët dhe produktet e tenant-it tuaj.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -116,7 +214,7 @@ export function OrdersPage() {
           <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">
             {stats.confirmed}
           </div>
-          <div className="text-sm text-slate-500 dark:text-slate-400">Të konfirmuara</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">Të përfunduara</div>
         </Card>
         <Card glow="pink">
           <div className="font-mono text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.pending}</div>
@@ -126,52 +224,83 @@ export function OrdersPage() {
 
       <Card glow="cyan">
         <CardTitle className="mb-4">Shto porosi</CardTitle>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <Label>Klienti *</Label>
-            <Input
-              value={form.customerName}
-              onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-            />
+        {optionsLoading ? (
+          <Skeleton className="h-24 rounded-xl" />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label>Klienti *</Label>
+              <Select
+                value={form.customer_id}
+                onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}
+              >
+                <option value="">— Zgjidh klientin —</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label>Produkti *</Label>
+              <Select
+                value={form.product_id}
+                onChange={(e) => {
+                  const pid = e.target.value
+                  setForm((f) => ({ ...f, product_id: pid }))
+                  applyProductPrice(pid, form.quantity || '1')
+                }}
+              >
+                <option value="">— Zgjidh produktin —</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+              {products.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">
+                  Nuk ka produkte për këtë tenant — krijoni produkte më parë.
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>Sasia *</Label>
+              <Input
+                type="number"
+                min={1}
+                value={form.quantity}
+                onChange={(e) => {
+                  const q = e.target.value
+                  setForm((f) => ({ ...f, quantity: q }))
+                  if (form.product_id) applyProductPrice(form.product_id, q)
+                }}
+              />
+            </div>
+            <div>
+              <Label>Totali (€) *</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.total_amount}
+                onChange={(e) => setForm((f) => ({ ...f, total_amount: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Statusi</Label>
+              <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+                {STATUS_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div>
-            <Label>Produkti *</Label>
-            <Input
-              value={form.productName}
-              onChange={(e) => setForm((f) => ({ ...f, productName: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Sasia *</Label>
-            <Input
-              type="number"
-              min={1}
-              value={form.quantity}
-              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Totali (€) *</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.totalAmount}
-              onChange={(e) => setForm((f) => ({ ...f, totalAmount: e.target.value }))}
-            />
-          </div>
-          <div>
-            <Label>Statusi</Label>
-            <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
-              {STATUS_OPTS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        <Button type="button" className="mt-4" onClick={add}>
+        )}
+        <Button type="button" className="mt-4" onClick={add} disabled={optionsLoading}>
           Shto porosinë
         </Button>
       </Card>
@@ -179,71 +308,87 @@ export function OrdersPage() {
       <Card glow="violet">
         <CardTitle className="mb-4">Lista e porosive</CardTitle>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-cyan-500/15 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-cyan-400/20 dark:text-slate-400">
-                <th className="pb-3">Klienti</th>
-                <th className="pb-3">Produkti</th>
-                <th className="pb-3">Sasia</th>
-                <th className="pb-3">Totali</th>
-                <th className="pb-3">Statusi</th>
-                <th className="pb-3">Data</th>
-                <th className="pb-3">Veprimet</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-500">
-                    Nuk ka porosi.
-                  </td>
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-cyan-500/15 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-cyan-400/20 dark:text-slate-400">
+                  <th className="pb-3">Klienti</th>
+                  <th className="pb-3">Produkti</th>
+                  <th className="pb-3">Sasia</th>
+                  <th className="pb-3">Totali</th>
+                  <th className="pb-3">Statusi</th>
+                  <th className="pb-3">Data</th>
+                  <th className="pb-3">Veprimet</th>
                 </tr>
-              ) : (
-                sorted.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="border-b border-slate-200/60 hover:bg-cyan-500/5 dark:border-slate-700/50"
-                  >
-                    <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{o.customerName}</td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{o.productName}</td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{o.quantity}</td>
-                    <td className="py-3 font-medium text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(o.totalAmount)}
-                    </td>
-                    <td className="py-3">
-                      <span className={cn('rounded-lg border px-2 py-0.5 text-xs font-bold', statusClass(o.status))}>
-                        {STATUS_OPTS.find((x) => x.value === o.status)?.label || o.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{formatDate(o.date)}</td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="px-3 py-1.5 text-xs"
-                          onClick={() => {
-                            setEdit({ ...o })
-                            setEditOpen(true)
-                          }}
-                        >
-                          Ndrysho
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="danger"
-                          className="px-3 py-1.5 text-xs"
-                          onClick={() => remove(o.id)}
-                        >
-                          Fshi
-                        </Button>
-                      </div>
+              </thead>
+              <tbody>
+                {sorted.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-500">
+                      Nuk ka porosi.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  sorted.map((o) => (
+                    <tr
+                      key={o.id}
+                      className="border-b border-slate-200/60 hover:bg-cyan-500/5 dark:border-slate-700/50"
+                    >
+                      <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{displayCustomer(o)}</td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400">{displayProduct(o)}</td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400">{o.quantity}</td>
+                      <td className="py-3 font-medium text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(o.total_amount)}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={cn(
+                            'rounded-lg border px-2 py-0.5 text-xs font-bold',
+                            statusClass(o.status),
+                          )}
+                        >
+                          {STATUS_OPTS.find((x) => x.value === o.status)?.label || o.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400">
+                        {o.created_at ? formatDate(o.created_at) : '—'}
+                      </td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-3 py-1.5 text-xs"
+                            onClick={() => {
+                              setEdit({ ...o })
+                              setEditOpen(true)
+                            }}
+                          >
+                            Ndrysho
+                          </Button>
+                          {canDeleteOrders && (
+                            <Button
+                              type="button"
+                              variant="danger"
+                              className="px-3 py-1.5 text-xs"
+                              onClick={() => remove(o.id)}
+                            >
+                              Fshi
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
 
@@ -253,17 +398,44 @@ export function OrdersPage() {
             <div className="space-y-3">
               <div>
                 <Label>Klienti</Label>
-                <Input
-                  value={edit.customerName}
-                  onChange={(e) => setEdit({ ...edit, customerName: e.target.value })}
-                />
+                <Select
+                  value={String(edit.customer_id)}
+                  onChange={(e) => setEdit({ ...edit, customer_id: e.target.value })}
+                >
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div>
                 <Label>Produkti</Label>
-                <Input
-                  value={edit.productName}
-                  onChange={(e) => setEdit({ ...edit, productName: e.target.value })}
-                />
+                <Select
+                  value={String(edit.product_id)}
+                  onChange={(e) => {
+                    const pid = e.target.value
+                    setEdit((prev) => {
+                      if (!prev) return prev
+                      const next = { ...prev, product_id: pid }
+                      const p = productById.get(pid)
+                      if (p?.price != null) {
+                        const q = parseInt(String(prev.quantity), 10) || 1
+                        const unit = parseFloat(String(p.price))
+                        if (!Number.isNaN(unit)) {
+                          next.total_amount = (unit * q).toFixed(2)
+                        }
+                      }
+                      return next
+                    })
+                  }}
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -271,7 +443,20 @@ export function OrdersPage() {
                   <Input
                     type="number"
                     value={String(edit.quantity)}
-                    onChange={(e) => setEdit({ ...edit, quantity: e.target.value })}
+                    onChange={(e) => {
+                      const q = e.target.value
+                      setEdit((prev) => {
+                        if (!prev) return prev
+                        const next = { ...prev, quantity: q }
+                        const p = productById.get(String(prev.product_id))
+                        if (p?.price != null) {
+                          const n = parseInt(q, 10) || 1
+                          const unit = parseFloat(String(p.price))
+                          if (!Number.isNaN(unit)) next.total_amount = (unit * n).toFixed(2)
+                        }
+                        return next
+                      })
+                    }}
                   />
                 </div>
                 <div>
@@ -279,8 +464,8 @@ export function OrdersPage() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={String(edit.totalAmount)}
-                    onChange={(e) => setEdit({ ...edit, totalAmount: e.target.value })}
+                    value={String(edit.total_amount)}
+                    onChange={(e) => setEdit({ ...edit, total_amount: e.target.value })}
                   />
                 </div>
               </div>

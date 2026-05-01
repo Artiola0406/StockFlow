@@ -25,7 +25,11 @@ router.get('/', async (req, res) => {
   try {
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM stock_movements WHERE tenant_id = $1 ORDER BY created_at DESC',
+      `SELECT sm.*, p.name AS product_display_name
+       FROM stock_movements sm
+       LEFT JOIN products p ON p.id = sm.product_id AND p.tenant_id = sm.tenant_id
+       WHERE sm.tenant_id = $1
+       ORDER BY sm.created_at DESC`,
       [tenantId]
     );
     res.json({ success: true, data: result.rows });
@@ -36,15 +40,14 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    let query = 'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE movement_type = \'in\') as inbound, COUNT(*) FILTER (WHERE movement_type = \'out\') as outbound FROM stock_movements';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      `SELECT COUNT(*) as total,
+              COUNT(*) FILTER (WHERE movement_type = 'in') as inbound,
+              COUNT(*) FILTER (WHERE movement_type = 'out') as outbound
+       FROM stock_movements WHERE tenant_id = $1`,
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -55,7 +58,10 @@ router.get('/:id', async (req, res) => {
   try {
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM stock_movements WHERE id = $1 AND tenant_id = $2',
+      `SELECT sm.*, p.name AS product_display_name
+       FROM stock_movements sm
+       LEFT JOIN products p ON p.id = sm.product_id AND p.tenant_id = sm.tenant_id
+       WHERE sm.id = $1 AND sm.tenant_id = $2`,
       [req.params.id, tenantId]
     );
     if (result.rows.length === 0) {
@@ -78,6 +84,21 @@ router.post('/', async (req, res) => {
 
     const id = Date.now().toString();
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+
+    const prodOk = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
+      [product_id, tenantId]
+    );
+    const whOk = await pool.query(
+      'SELECT id FROM warehouses WHERE id = $1 AND tenant_id = $2',
+      [warehouse_id, tenantId]
+    );
+    if (prodOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Produkti nuk u gjet për këtë tenant.' });
+    }
+    if (whOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Depoja nuk u gjet për këtë tenant.' });
+    }
 
     const result = await pool.query(
       `INSERT INTO stock_movements (id, product_id, warehouse_id, quantity, movement_type, reference, tenant_id)
@@ -106,6 +127,22 @@ router.put('/:id', async (req, res) => {
     }
 
     const { product_id, warehouse_id, quantity, movement_type, reference } = req.body;
+
+    const prodOk = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
+      [product_id, tenantId]
+    );
+    const whOk = await pool.query(
+      'SELECT id FROM warehouses WHERE id = $1 AND tenant_id = $2',
+      [warehouse_id, tenantId]
+    );
+    if (prodOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Produkti nuk u gjet për këtë tenant.' });
+    }
+    if (whOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Depoja nuk u gjet për këtë tenant.' });
+    }
+
     const result = await pool.query(
       `UPDATE stock_movements SET product_id=$1, warehouse_id=$2, quantity=$3, movement_type=$4, reference=$5
        WHERE id=$6 AND tenant_id=$7 RETURNING *`,

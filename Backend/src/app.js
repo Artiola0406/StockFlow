@@ -11,6 +11,7 @@ const supplierRoutes = require('./routes/supplierRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const stockMovementRoutes = require('./routes/stockMovementRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -29,6 +30,7 @@ app.use('/api/suppliers', ...requirePermission('suppliers'), supplierRoutes);
 app.use('/api/customers', ...requirePermission('customers'), customerRoutes);
 app.use('/api/orders', ...requirePermission('orders'), orderRoutes);
 app.use('/api/stockmovements', ...requirePermission('stockmovements'), stockMovementRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tenants', authenticate, tenantRoutes);
 

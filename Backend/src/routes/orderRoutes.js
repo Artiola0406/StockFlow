@@ -25,7 +25,14 @@ router.get('/', async (req, res) => {
   try {
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM orders WHERE tenant_id = $1 ORDER BY created_at DESC',
+      `SELECT o.id, o.customer_id, o.product_id, o.quantity, o.total_amount, o.status, o.tenant_id, o.created_at,
+              c.name AS customer_name,
+              p.name AS product_name
+       FROM orders o
+       LEFT JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id
+       LEFT JOIN products p ON p.id = o.product_id AND p.tenant_id = o.tenant_id
+       WHERE o.tenant_id = $1
+       ORDER BY o.created_at DESC`,
       [tenantId]
     );
     res.json({ success: true, data: result.rows });
@@ -36,16 +43,35 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    let query = 'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = \'completed\') as completed FROM orders';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      `SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'completed') as completed
+       FROM orders WHERE tenant_id = $1`,
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.get('/form-options', async (req, res) => {
+  try {
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const [customers, products] = await Promise.all([
+      pool.query(
+        'SELECT id, name FROM customers WHERE tenant_id = $1 ORDER BY name ASC',
+        [tenantId]
+      ),
+      pool.query(
+        'SELECT id, name, price FROM products WHERE tenant_id = $1 ORDER BY name ASC',
+        [tenantId]
+      ),
+    ]);
+    res.json({
+      success: true,
+      data: { customers: customers.rows, products: products.rows },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -53,15 +79,18 @@ router.get('/stats', async (req, res) => {
 
 router.get('/by-status/:status', async (req, res) => {
   try {
-    let query = 'SELECT * FROM orders WHERE status = $1';
-    const params = [req.params.status];
-
-    if (req.tenantId) {
-      query += ' AND tenant_id = $2';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      `SELECT o.id, o.customer_id, o.product_id, o.quantity, o.total_amount, o.status, o.tenant_id, o.created_at,
+              c.name AS customer_name,
+              p.name AS product_name
+       FROM orders o
+       LEFT JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id
+       LEFT JOIN products p ON p.id = o.product_id AND p.tenant_id = o.tenant_id
+       WHERE o.status = $1 AND o.tenant_id = $2
+       ORDER BY o.created_at DESC`,
+      [req.params.status, tenantId]
+    );
     res.json({ success: true, data: result.rows });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -72,7 +101,13 @@ router.get('/:id', async (req, res) => {
   try {
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM orders WHERE id = $1 AND tenant_id = $2',
+      `SELECT o.id, o.customer_id, o.product_id, o.quantity, o.total_amount, o.status, o.tenant_id, o.created_at,
+              c.name AS customer_name,
+              p.name AS product_name
+       FROM orders o
+       LEFT JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id
+       LEFT JOIN products p ON p.id = o.product_id AND p.tenant_id = o.tenant_id
+       WHERE o.id = $1 AND o.tenant_id = $2`,
       [req.params.id, tenantId]
     );
     if (result.rows.length === 0) {
@@ -95,6 +130,21 @@ router.post('/', async (req, res) => {
 
     const id = Date.now().toString();
     const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+
+    const custOk = await pool.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2',
+      [customer_id, tenantId]
+    );
+    const prodOk = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
+      [product_id, tenantId]
+    );
+    if (custOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Klienti nuk u gjet për këtë tenant.' });
+    }
+    if (prodOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Produkti nuk u gjet për këtë tenant.' });
+    }
 
     const result = await pool.query(
       `INSERT INTO orders (id, customer_id, product_id, quantity, total_amount, status, tenant_id)
@@ -123,6 +173,22 @@ router.put('/:id', async (req, res) => {
     }
 
     const { customer_id, product_id, quantity, total_amount, status } = req.body;
+
+    const custOk = await pool.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2',
+      [customer_id, tenantId]
+    );
+    const prodOk = await pool.query(
+      'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
+      [product_id, tenantId]
+    );
+    if (custOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Klienti nuk u gjet për këtë tenant.' });
+    }
+    if (prodOk.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Produkti nuk u gjet për këtë tenant.' });
+    }
+
     const result = await pool.query(
       `UPDATE orders SET customer_id=$1, product_id=$2, quantity=$3, total_amount=$4, status=$5
        WHERE id=$6 AND tenant_id=$7 RETURNING *`,

@@ -36,15 +36,11 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    let query = 'SELECT COUNT(*) as total FROM customers';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT COUNT(*) as total FROM customers WHERE tenant_id = $1',
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

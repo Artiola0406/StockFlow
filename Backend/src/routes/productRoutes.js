@@ -36,15 +36,12 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    let query = 'SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE quantity <= 5) as low_stock FROM products';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      `SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE quantity <= 5) as low_stock
+       FROM products WHERE tenant_id = $1`,
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -53,15 +50,11 @@ router.get('/stats', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    let query = 'SELECT * FROM products WHERE id = $1';
-    const params = [req.params.id];
-
-    if (req.tenantId) {
-      query += ' AND tenant_id = $2';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT * FROM products WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, tenantId]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Produkti nuk u gjet.' });
     }

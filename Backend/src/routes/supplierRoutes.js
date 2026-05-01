@@ -36,15 +36,11 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    let query = 'SELECT COUNT(*) as total FROM suppliers';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' WHERE tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT COUNT(*) as total FROM suppliers WHERE tenant_id = $1',
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -53,16 +49,11 @@ router.get('/stats', async (req, res) => {
 
 router.get('/active', async (req, res) => {
   try {
-    let query = 'SELECT * FROM suppliers WHERE active = true';
-    const params = [];
-
-    if (req.tenantId) {
-      query += ' AND tenant_id = $1';
-      params.push(req.tenantId);
-    }
-
-    query += ' ORDER BY created_at DESC';
-    const result = await pool.query(query, params);
+    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const result = await pool.query(
+      'SELECT * FROM suppliers WHERE active = true AND tenant_id = $1 ORDER BY created_at DESC',
+      [tenantId]
+    );
     res.json({ success: true, data: result.rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
