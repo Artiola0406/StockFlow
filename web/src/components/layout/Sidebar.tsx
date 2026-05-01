@@ -70,7 +70,7 @@ function Aside({
   
   // Filter out Tenants menu for non-super_admin users
   const filteredNav = visibleNav.filter(item => 
-    item.permission !== 'tenants' || user?.user_role === 'super_admin'
+    item.permission !== 'tenants' || user?.role === 'super_admin'
   )
 
   return (
@@ -101,7 +101,7 @@ function Aside({
               StockFlow
             </div>
             <div className="truncate text-[11px] font-medium uppercase tracking-wider text-cyan-600/90 dark:text-cyan-300/90">
-              {user?.tenant_name || 'Neural Inventory'}
+              {user?.tenant_id != null ? String(user.tenant_id) : 'Neural Inventory'}
             </div>
           </motion.div>
         )}
@@ -166,10 +166,10 @@ function Aside({
                 <span
                   className={cn(
                     'mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                    roleBadgeClass(user.user_role || 'staff'),
+                    roleBadgeClass(user.role || 'staff'),
                   )}
                 >
-                  {roleLabel(user.user_role || 'staff')}
+                  {roleLabel(user.role || 'staff')}
                 </span>
               </div>
             )}
