@@ -61,7 +61,7 @@ export function DashboardPage() {
   const { isDark } = useTheme()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [_error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
