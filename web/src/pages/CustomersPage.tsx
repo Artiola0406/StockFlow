@@ -18,6 +18,11 @@ interface CustomerApiRow {
   createdAt?: string
 }
 
+interface CustomersListResponse {
+  success?: boolean
+  customers?: CustomerApiRow[]
+}
+
 export function CustomersPage() {
   const { showToast } = useToast()
   const [rows, setRows] = useState<Customer[]>([])
@@ -38,8 +43,8 @@ export function CustomersPage() {
   const loadCustomers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiGet<ApiListResponse<CustomerApiRow[]>>('/customers')
-      setRows((res.data ?? []).map(mapCustomer))
+      const res = await apiGet<CustomersListResponse>('/customers')
+      setRows((res.customers ?? []).map(mapCustomer))
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë ngarkimit të klientëve', 'error')
       setRows([])
@@ -66,8 +71,8 @@ export function CustomersPage() {
       await apiPost<ApiListResponse<CustomerApiRow>>('/customers', {
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim(),
         address: address.trim() || null,
+        phone: phone.trim(),
       })
       showToast('Klienti u shtua!', 'success')
       setForm({ name: '', email: '', phone: '', address: '' })
@@ -83,8 +88,8 @@ export function CustomersPage() {
       await apiPut<ApiListResponse<CustomerApiRow>>(`/customers/${edit.id}`, {
         name: edit.name,
         email: edit.email,
-        phone: edit.phone,
         address: edit.address || null,
+        phone: edit.phone,
       })
       setEditOpen(false)
       showToast('Klienti u përditësua!', 'success')

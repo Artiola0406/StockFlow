@@ -18,11 +18,16 @@ interface WarehouseApiRow {
   isActive?: boolean
 }
 
+interface WarehousesListResponse {
+  success?: boolean
+  warehouses?: WarehouseApiRow[]
+}
+
 export function WarehousesPage() {
   const { showToast } = useToast()
   const [rows, setRows] = useState<WarehouseRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: '', location: '', capacity: '', isActive: true })
+  const [form, setForm] = useState({ name: '', location: '', capacity: '' })
   const [editOpen, setEditOpen] = useState(false)
   const [edit, setEdit] = useState<WarehouseRow | null>(null)
 
@@ -37,8 +42,8 @@ export function WarehousesPage() {
   const loadWarehouses = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiGet<ApiListResponse<WarehouseApiRow[]>>('/warehouses')
-      setRows((res.data ?? []).map(mapWarehouse))
+      const res = await apiGet<WarehousesListResponse>('/warehouses')
+      setRows((res.warehouses ?? []).map(mapWarehouse))
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë ngarkimit të depove', 'error')
       setRows([])
@@ -59,10 +64,9 @@ export function WarehousesPage() {
         name: form.name.trim(),
         location: form.location.trim(),
         capacity: form.capacity === '' ? 0 : Number(form.capacity),
-        is_active: form.isActive,
       })
       showToast('Depoja u shtua!', 'success')
-      setForm({ name: '', location: '', capacity: '', isActive: true })
+      setForm({ name: '', location: '', capacity: '' })
       loadWarehouses()
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë shtimit të depos', 'error')
@@ -119,7 +123,7 @@ export function WarehousesPage() {
 
       <Card glow="cyan">
         <CardTitle className="mb-4">Shto depo të re</CardTitle>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Emri *</Label>
             <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
@@ -136,18 +140,6 @@ export function WarehousesPage() {
               value={form.capacity}
               onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
             />
-          </div>
-          <div className="flex items-end gap-2 pb-2">
-            <input
-              id="wh-active"
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-              className="h-4 w-4 rounded border-cyan-400/50 text-cyan-500"
-            />
-            <label htmlFor="wh-active" className="cursor-pointer pb-0.5 text-sm text-slate-600 dark:text-slate-300">
-              Aktive
-            </label>
           </div>
         </div>
         <Button type="button" className="mt-4" onClick={add}>

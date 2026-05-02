@@ -37,6 +37,11 @@ interface FormOption {
   price?: string | number
 }
 
+interface CustomersApiResponse {
+  success?: boolean
+  customers?: FormOption[]
+}
+
 function statusClass(s: string) {
   const map: Record<string, string> = {
     pending: 'border-amber-400/40 bg-amber-500/15 text-amber-800 dark:text-amber-200',
@@ -72,19 +77,20 @@ export function OrdersPage() {
   const loadOptions = useCallback(async () => {
     setOptionsLoading(true)
     try {
-      const res = await apiGet<
-        ApiListResponse<{ customers: FormOption[]; products: FormOption[] }>
-      >('/orders/form-options')
-      const d = res.data
-      setCustomers(d?.customers ?? [])
-      setProducts(d?.products ?? [])
-    } catch {
+      const [custRes, prodRes] = await Promise.all([
+        apiGet<CustomersApiResponse>('/customers'),
+        apiGet<ApiListResponse<FormOption[]>>('/products'),
+      ])
+      setCustomers(custRes.customers ?? [])
+      setProducts(prodRes.data ?? [])
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Opsionet nuk u ngarkuan', 'error')
       setCustomers([])
       setProducts([])
     } finally {
       setOptionsLoading(false)
     }
-  }, [])
+  }, [showToast])
 
   const loadOrders = useCallback(async () => {
     setLoading(true)
@@ -241,6 +247,11 @@ export function OrdersPage() {
                   </option>
                 ))}
               </Select>
+              {customers.length === 0 && !optionsLoading && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">
+                  Nuk ka klientë — shto fillimisht.
+                </p>
+              )}
             </div>
             <div>
               <Label>Produkti *</Label>
@@ -259,9 +270,9 @@ export function OrdersPage() {
                   </option>
                 ))}
               </Select>
-              {products.length === 0 && (
+              {products.length === 0 && !optionsLoading && (
                 <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">
-                  Nuk ka produkte për këtë tenant — krijoni produkte më parë.
+                  Nuk ka produkte — shto fillimisht.
                 </p>
               )}
             </div>

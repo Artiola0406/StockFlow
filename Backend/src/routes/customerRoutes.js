@@ -4,29 +4,19 @@ const { authenticate, authorize } = require('../middlewares/authMiddleware');
 const { tenantFilter } = require('../middlewares/tenantMiddleware');
 const pool = require('../config/database');
 
-// Apply auth + tenant filter to ALL routes
 router.use(authenticate, tenantFilter);
 
-const useDatabase = process.env.DATABASE_URL ? true : false;
-
-let service;
-if (useDatabase) {
-  const CustomerService = require('../services/CustomerService');
-  const CustomerDbRepository = require('../repositories/CustomerDbRepository');
-  service = new CustomerService(new CustomerDbRepository());
-} else {
-  const CustomerService = require('../services/CustomerService');
-  service = new CustomerService();
-}
+const tenantId = (req) => req.user.tenant_id || 'tenant-default';
 
 router.get('/', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
-      'SELECT * FROM customers WHERE tenant_id = $1',
-      [tenantId]
+      `SELECT id, name, email, address, phone, created_at
+       FROM customers WHERE tenant_id = $1`,
+      [tid]
     );
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, customers: result.rows });
   } catch (err) {
     console.error('Error fetching customers:', err);
     res.status(500).json({ success: false, message: err.message });
@@ -35,10 +25,10 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
       'SELECT COUNT(*) as total FROM customers WHERE tenant_id = $1',
-      [tenantId]
+      [tid]
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -49,10 +39,11 @@ router.get('/stats', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
-      'SELECT * FROM customers WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, tenantId]
+      `SELECT id, name, email, address, phone, created_at, tenant_id
+       FROM customers WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, tid]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Klienti nuk u gjet.' });
@@ -66,20 +57,23 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, address } = req.body;
+    const { name, email, address, phone } = req.body;
 
-    if (!name) return res.status(400).json({
-      success: false,
-      message: 'Emri i klientit është i detyrueshëm.'
-    });
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Emri i klientit është i detyrueshëm.',
+      });
+    }
 
     const id = `cust-${Date.now()}`;
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
 
     const result = await pool.query(
-      `INSERT INTO customers (id, name, email, phone, address, tenant_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [id, name, email || null, phone || null, address || null, tenantId]
+      `INSERT INTO customers (id, name, email, address, phone, tenant_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING id, name, email, address, phone, created_at`,
+      [id, name, email || null, address || null, phone || null, tid]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -91,23 +85,24 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const existing = await pool.query(
-      'SELECT * FROM customers WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, tenantId]
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, tid]
     );
     if (existing.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Klienti nuk u gjet.'
+        message: 'Klienti nuk u gjet.',
       });
     }
 
-    const { name, email, phone, address } = req.body;
+    const { name, email, address, phone } = req.body;
     const result = await pool.query(
-      `UPDATE customers SET name=$1, email=$2, phone=$3, address=$4
-       WHERE id=$5 AND tenant_id=$6 RETURNING *`,
-      [name, email, phone, address, req.params.id, tenantId]
+      `UPDATE customers SET name=$1, email=$2, address=$3, phone=$4
+       WHERE id=$5 AND tenant_id=$6
+       RETURNING id, name, email, address, phone, created_at`,
+      [name, email, address, phone, req.params.id, tid]
     );
 
     res.json({ success: true, data: result.rows[0] });
@@ -119,15 +114,15 @@ router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
 
 router.delete('/:id', authorize('super_admin'), async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
       'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING id',
-      [req.params.id, tenantId]
+      [req.params.id, tid]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Klienti nuk u gjet.'
+        message: 'Klienti nuk u gjet.',
       });
     }
     res.json({ success: true, message: 'Klienti u fshi.' });

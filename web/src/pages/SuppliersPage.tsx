@@ -12,33 +12,37 @@ import { cn } from '../lib/cn'
 interface SupplierApiRow {
   id: string
   name: string
-  email?: string | null
+  contact_email?: string | null
   phone?: string | null
   is_active?: boolean
-  isActive?: boolean
+}
+
+interface SuppliersListResponse {
+  success?: boolean
+  suppliers?: SupplierApiRow[]
 }
 
 export function SuppliersPage() {
   const { showToast } = useToast()
   const [rows, setRows] = useState<SupplierRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', isActive: true })
+  const [form, setForm] = useState({ name: '', contact_email: '', phone: '' })
   const [editOpen, setEditOpen] = useState(false)
-  const [edit, setEdit] = useState<SupplierRow | null>(null)
+  const [edit, setEdit] = useState<(SupplierRow & { contact_email?: string }) | null>(null)
 
   const mapSupplier = (row: SupplierApiRow): SupplierRow => ({
     id: String(row.id),
     name: row.name || '',
-    email: row.email || '',
+    email: row.contact_email || '',
     phone: row.phone || '',
-    isActive: row.is_active ?? row.isActive ?? true,
+    isActive: row.is_active ?? true,
   })
 
   const loadSuppliers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiGet<ApiListResponse<SupplierApiRow[]>>('/suppliers')
-      setRows((res.data ?? []).map(mapSupplier))
+      const res = await apiGet<SuppliersListResponse>('/suppliers')
+      setRows((res.suppliers ?? []).map(mapSupplier))
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë ngarkimit të furnitorëve', 'error')
       setRows([])
@@ -53,17 +57,16 @@ export function SuppliersPage() {
 
   async function add() {
     if (!form.name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
-    if (!form.email.trim()) return showToast('Email është i detyrueshëm!', 'error')
+    if (!form.contact_email.trim()) return showToast('Email kontakti është i detyrueshëm!', 'error')
     if (!form.phone.trim()) return showToast('Telefoni është i detyrueshëm!', 'error')
     try {
       await apiPost<ApiListResponse<SupplierApiRow>>('/suppliers', {
         name: form.name.trim(),
-        email: form.email.trim(),
+        contact_email: form.contact_email.trim(),
         phone: form.phone.trim(),
-        is_active: form.isActive,
       })
       showToast('Furnitori u shtua!', 'success')
-      setForm({ name: '', email: '', phone: '', isActive: true })
+      setForm({ name: '', contact_email: '', phone: '' })
       loadSuppliers()
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë shtimit të furnitorit', 'error')
@@ -75,7 +78,7 @@ export function SuppliersPage() {
     try {
       await apiPut<ApiListResponse<SupplierApiRow>>(`/suppliers/${edit.id}`, {
         name: edit.name,
-        email: edit.email,
+        contact_email: edit.contact_email ?? edit.email,
         phone: edit.phone,
         is_active: edit.isActive,
       })
@@ -120,31 +123,22 @@ export function SuppliersPage() {
 
       <Card glow="cyan">
         <CardTitle className="mb-4">Shto furnitor</CardTitle>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Emri *</Label>
             <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           </div>
           <div>
-            <Label>Email *</Label>
+            <Label>Email kontakti *</Label>
             <Input
               type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              value={form.contact_email}
+              onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))}
             />
           </div>
           <div>
             <Label>Telefoni *</Label>
             <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-          </div>
-          <div className="flex items-end gap-2 pb-2">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-              className="h-4 w-4 rounded border-cyan-400/50"
-            />
-            <span className="text-sm text-slate-600 dark:text-slate-300">Aktiv</span>
           </div>
         </div>
         <Button type="button" className="mt-4" onClick={add}>
@@ -159,7 +153,7 @@ export function SuppliersPage() {
             <thead>
               <tr className="border-b border-cyan-500/15 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-cyan-400/20 dark:text-slate-400">
                 <th className="pb-3">Emri</th>
-                <th className="pb-3">Email</th>
+                <th className="pb-3">Email kontakti</th>
                 <th className="pb-3">Telefoni</th>
                 <th className="pb-3">Statusi</th>
                 <th className="pb-3">Veprimet</th>
@@ -208,7 +202,7 @@ export function SuppliersPage() {
                           variant="secondary"
                           className="px-3 py-1.5 text-xs"
                           onClick={() => {
-                            setEdit({ ...s })
+                            setEdit({ ...s, contact_email: s.email })
                             setEditOpen(true)
                           }}
                         >
@@ -241,11 +235,13 @@ export function SuppliersPage() {
                 <Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
               </div>
               <div>
-                <Label>Email</Label>
+                <Label>Email kontakti</Label>
                 <Input
                   type="email"
-                  value={edit.email}
-                  onChange={(e) => setEdit({ ...edit, email: e.target.value })}
+                  value={edit.contact_email ?? edit.email}
+                  onChange={(e) =>
+                    setEdit({ ...edit, contact_email: e.target.value, email: e.target.value })
+                  }
                 />
               </div>
               <div>

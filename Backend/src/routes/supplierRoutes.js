@@ -4,29 +4,19 @@ const { authenticate, authorize } = require('../middlewares/authMiddleware');
 const { tenantFilter } = require('../middlewares/tenantMiddleware');
 const pool = require('../config/database');
 
-// Apply auth + tenant filter to ALL routes
 router.use(authenticate, tenantFilter);
 
-const useDatabase = process.env.DATABASE_URL ? true : false;
-
-let service;
-if (useDatabase) {
-  const SupplierService = require('../services/SupplierService');
-  const SupplierDbRepository = require('../repositories/SupplierDbRepository');
-  service = new SupplierService(new SupplierDbRepository());
-} else {
-  const SupplierService = require('../services/SupplierService');
-  service = new SupplierService();
-}
+const tenantId = (req) => req.user.tenant_id || 'tenant-default';
 
 router.get('/', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
-      'SELECT * FROM suppliers WHERE tenant_id = $1',
-      [tenantId]
+      `SELECT id, name, contact_email, phone, is_active, created_at
+       FROM suppliers WHERE tenant_id = $1`,
+      [tid]
     );
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, suppliers: result.rows });
   } catch (err) {
     console.error('Error fetching suppliers:', err);
     res.status(500).json({ success: false, message: err.message });
@@ -35,10 +25,10 @@ router.get('/', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
       'SELECT COUNT(*) as total FROM suppliers WHERE tenant_id = $1',
-      [tenantId]
+      [tid]
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -49,12 +39,14 @@ router.get('/stats', async (req, res) => {
 
 router.get('/active', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
-      'SELECT * FROM suppliers WHERE active = true AND tenant_id = $1 ORDER BY created_at DESC',
-      [tenantId]
+      `SELECT id, name, contact_email, phone, is_active, created_at
+       FROM suppliers WHERE is_active = true AND tenant_id = $1
+       ORDER BY created_at DESC`,
+      [tid]
     );
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, suppliers: result.rows });
   } catch (err) {
     console.error('Error fetching active suppliers:', err);
     res.status(500).json({ success: false, message: err.message });
@@ -63,10 +55,11 @@ router.get('/active', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
-      'SELECT * FROM suppliers WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, tenantId]
+      `SELECT id, name, contact_email, phone, is_active, created_at, tenant_id
+       FROM suppliers WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, tid]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Furnitori nuk u gjet.' });
@@ -80,20 +73,23 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, email, phone, address } = req.body;
+    const { name, contact_email, phone } = req.body;
 
-    if (!name) return res.status(400).json({
-      success: false,
-      message: 'Emri i furnitorit është i detyrueshëm.'
-    });
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Emri i furnitorit është i detyrueshëm.',
+      });
+    }
 
     const id = `sup-${Date.now()}`;
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
 
     const result = await pool.query(
-      `INSERT INTO suppliers (id, name, email, phone, address, tenant_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [id, name, email || null, phone || null, address || null, tenantId]
+      `INSERT INTO suppliers (id, name, contact_email, phone, is_active, tenant_id, created_at)
+       VALUES ($1, $2, $3, $4, true, $5, NOW())
+       RETURNING id, name, contact_email, phone, is_active, created_at`,
+      [id, name, contact_email || null, phone || null, tid]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -105,23 +101,24 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const existing = await pool.query(
-      'SELECT * FROM suppliers WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, tenantId]
+      'SELECT id FROM suppliers WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, tid]
     );
     if (existing.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Furnitori nuk u gjet.'
+        message: 'Furnitori nuk u gjet.',
       });
     }
 
-    const { name, email, phone, address } = req.body;
+    const { name, contact_email, phone, is_active } = req.body;
     const result = await pool.query(
-      `UPDATE suppliers SET name=$1, email=$2, phone=$3, address=$4
-       WHERE id=$5 AND tenant_id=$6 RETURNING *`,
-      [name, email, phone, address, req.params.id, tenantId]
+      `UPDATE suppliers SET name=$1, contact_email=$2, phone=$3, is_active=$4
+       WHERE id=$5 AND tenant_id=$6
+       RETURNING id, name, contact_email, phone, is_active, created_at`,
+      [name, contact_email, phone, is_active, req.params.id, tid]
     );
 
     res.json({ success: true, data: result.rows[0] });
@@ -133,15 +130,15 @@ router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
 
 router.delete('/:id', authorize('super_admin'), async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id || 'tenant-default';
+    const tid = tenantId(req);
     const result = await pool.query(
       'DELETE FROM suppliers WHERE id = $1 AND tenant_id = $2 RETURNING id',
-      [req.params.id, tenantId]
+      [req.params.id, tid]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Furnitori nuk u gjet.'
+        message: 'Furnitori nuk u gjet.',
       });
     }
     res.json({ success: true, message: 'Furnitori u fshi.' });
