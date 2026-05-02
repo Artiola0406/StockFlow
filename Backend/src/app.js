@@ -15,6 +15,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const userRoutes = require('./routes/userRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 const { authenticate, requirePermission } = require('./middlewares/authMiddleware');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/stockmovements', ...requirePermission('stockmovements'), stockMove
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/tenants', authenticate, tenantRoutes);
+app.use('/api/search', searchRoutes);
 
 const webDist = path.join(__dirname, '../../web/dist');
 
