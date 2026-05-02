@@ -51,6 +51,24 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'customer_name dhe product_name janë të detyrueshëm.' });
     }
 
+    const productNameTrim = String(product_name).trim();
+    const qtyOrdered = parseInt(quantity, 10);
+    const orderQty = Number.isNaN(qtyOrdered) || qtyOrdered < 1 ? 1 : qtyOrdered;
+
+    const stockCheck = await pool.query(
+      'SELECT quantity FROM products WHERE name = $1 AND tenant_id = $2',
+      [productNameTrim, tenantId]
+    );
+
+    if (stockCheck.rows.length > 0) {
+      const available = Number(stockCheck.rows[0].quantity);
+      if (available < orderQty) {
+        return res.status(400).json({
+          error: `Stoku i pamjaftueshëm. Disponibël: ${available} njësi`,
+        });
+      }
+    }
+
     const id = `ord-${Date.now()}`;
     const result = await pool.query(
       `INSERT INTO orders (id, customer_name, product_name, quantity, total_amount, status, tenant_id, created_at)
@@ -59,13 +77,33 @@ router.post('/', async (req, res) => {
       [
         id,
         String(customer_name).trim(),
-        String(product_name).trim(),
-        quantity != null ? Number(quantity) : 1,
+        productNameTrim,
+        orderQty,
         total_amount != null ? Number(total_amount) : 0,
         status != null ? String(status) : 'pending',
         tenantId,
       ]
     );
+
+    try {
+      const productResult = await pool.query(
+        'SELECT id, quantity FROM products WHERE name = $1 AND tenant_id = $2',
+        [productNameTrim, tenantId]
+      );
+
+      if (productResult.rows.length > 0) {
+        const product = productResult.rows[0];
+        const newQuantity = Math.max(0, Number(product.quantity) - orderQty);
+        await pool.query('UPDATE products SET quantity = $1 WHERE id = $2 AND tenant_id = $3', [
+          newQuantity,
+          product.id,
+          tenantId,
+        ]);
+      }
+    } catch (qErr) {
+      console.error('Failed to update product quantity after order:', qErr.message);
+    }
+
     res.status(201).json({ order: result.rows[0] });
   } catch (err) {
     console.error('ORDER ERROR:', err.message);

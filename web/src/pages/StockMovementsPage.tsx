@@ -101,17 +101,23 @@ export function StockMovementsPage() {
     if (!form.warehouse_name.trim()) return showToast('Depoja është e detyrueshme!', 'error')
     if (!form.quantity || parseInt(form.quantity, 10) <= 0)
       return showToast('Sasia duhet të jetë pozitive!', 'error')
+    const qtyNum = parseInt(form.quantity, 10)
     try {
       await apiPost<ApiListResponse<MovementApiRow>>('/stockmovements', {
         product_name: form.product_name.trim(),
         warehouse_name: form.warehouse_name.trim(),
         type: form.type,
-        quantity: parseInt(form.quantity, 10),
+        quantity: qtyNum,
         reason: form.reason.trim() || undefined,
       })
-      showToast('Lëvizja u regjistrua!', 'success')
+      if (form.type === 'IN') {
+        showToast(`Stoku u rrit me ${qtyNum} njësi`, 'success')
+      } else {
+        showToast(`Stoku u ul me ${qtyNum} njësi`, 'success')
+      }
       setForm({ product_name: '', warehouse_name: '', type: 'IN', quantity: '', reason: '' })
-      loadMovements()
+      await loadMovements()
+      await loadOptions()
     } catch (err: any) {
       showToast(err.message || 'Gabim gjatë regjistrimit të lëvizjes', 'error')
     }

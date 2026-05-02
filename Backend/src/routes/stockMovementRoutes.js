@@ -81,6 +81,38 @@ router.post('/', async (req, res) => {
       [id, product_name, warehouse_name, type, Number.isNaN(qty) ? 0 : qty, reason || null, tid]
     );
 
+    const productNameTrim = String(product_name).trim();
+
+    try {
+      const productResult = await pool.query(
+        'SELECT id, quantity FROM products WHERE name = $1 AND tenant_id = $2',
+        [productNameTrim, tid]
+      );
+
+      if (productResult.rows.length > 0) {
+        const product = productResult.rows[0];
+        const typeStr = String(type).trim();
+        const typeUpper = typeStr.toUpperCase();
+        let newQuantity;
+
+        if (typeUpper === 'IN' || typeStr === 'Hyrje') {
+          newQuantity = Number(product.quantity) + (parseInt(quantity, 10) || 0);
+        } else if (typeUpper === 'OUT' || typeStr === 'Dalje') {
+          newQuantity = Math.max(0, Number(product.quantity) - (parseInt(quantity, 10) || 0));
+        }
+
+        if (newQuantity !== undefined) {
+          await pool.query('UPDATE products SET quantity = $1 WHERE id = $2 AND tenant_id = $3', [
+            newQuantity,
+            product.id,
+            tid,
+          ]);
+        }
+      }
+    } catch (qErr) {
+      console.error('Failed to update product quantity after stock movement:', qErr.message);
+    }
+
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('Error creating stock movement:', err);

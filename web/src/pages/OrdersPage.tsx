@@ -174,7 +174,7 @@ export function OrdersPage() {
         total_amount: parseFloat(total_amount),
         status,
       })
-      showToast('Porosia u shtua!', 'success')
+      showToast('Porosia u krijua dhe stoku u përditësua', 'success')
       setForm({
         customer_name: '',
         product_name: '',
@@ -182,6 +182,7 @@ export function OrdersPage() {
         total_amount: '',
         status: 'pending',
       })
+      await loadOptions()
       await loadOrders()
       await loadStats()
     } catch (e) {
