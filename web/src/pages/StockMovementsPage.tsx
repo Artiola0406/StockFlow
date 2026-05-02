@@ -1,69 +1,123 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
-import { lsGet, lsSet } from '../lib/storage'
+import { Skeleton } from '../components/ui/Skeleton'
+import { apiGet, apiPost } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { useToast } from '../context/ToastContext'
-import type { MovementRow } from '../types'
+import type { ApiListResponse } from '../types'
 import { cn } from '../lib/cn'
 
-const KEY = 'movements'
+interface ProductOption {
+  id: string | number
+  name: string
+}
+
+interface WarehouseOption {
+  id: string | number
+  name: string
+}
+
+interface MovementApiRow {
+  id: string
+  product_id: string
+  warehouse_id: string
+  product_name?: string | null
+  movement_type: string
+  quantity: number | string
+  reference?: string | null
+  created_at?: string
+}
 
 export function StockMovementsPage() {
   const { showToast } = useToast()
-  const [rows, setRows] = useState<MovementRow[]>(() => lsGet<MovementRow[]>(KEY, []))
+  const [rows, setRows] = useState<MovementApiRow[]>([])
+  const [products, setProducts] = useState<ProductOption[]>([])
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [optionsLoading, setOptionsLoading] = useState(true)
   const [form, setForm] = useState({
-    productName: '',
-    warehouseName: '',
+    product_id: '',
+    warehouse_id: '',
     type: 'IN' as 'IN' | 'OUT',
     quantity: '',
     reason: '',
   })
 
-  const persist = useCallback((next: MovementRow[]) => {
-    lsSet(KEY, next)
-    setRows(next)
-  }, [])
+  const loadMovements = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiGet<ApiListResponse<MovementApiRow[]>>('/stockmovements')
+      setRows(res.data ?? [])
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë ngarkimit të lëvizjeve', 'error')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  const loadOptions = useCallback(async () => {
+    setOptionsLoading(true)
+    try {
+      const [productsRes, warehousesRes] = await Promise.all([
+        apiGet<ApiListResponse<ProductOption[]>>('/products'),
+        apiGet<ApiListResponse<WarehouseOption[]>>('/warehouses'),
+      ])
+      setProducts(productsRes.data ?? [])
+      setWarehouses(warehousesRes.data ?? [])
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë ngarkimit të produkteve/depo-ve', 'error')
+      setProducts([])
+      setWarehouses([])
+    } finally {
+      setOptionsLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    loadMovements()
+    loadOptions()
+  }, [loadMovements, loadOptions])
 
   const stats = useMemo(
     () => ({
       total: rows.length,
-      inC: rows.filter((m) => m.type === 'IN').length,
-      outC: rows.filter((m) => m.type === 'OUT').length,
+      inC: rows.filter((m) => m.movement_type?.toUpperCase() === 'IN').length,
+      outC: rows.filter((m) => m.movement_type?.toUpperCase() === 'OUT').length,
     }),
     [rows],
   )
 
-  function add() {
-    if (!form.productName.trim()) return showToast('Produkti është i detyrueshëm!', 'error')
-    if (!form.warehouseName.trim()) return showToast('Depoja është e detyrueshme!', 'error')
+  async function add() {
+    if (!form.product_id) return showToast('Produkti është i detyrueshëm!', 'error')
+    if (!form.warehouse_id) return showToast('Depoja është e detyrueshme!', 'error')
     if (!form.quantity || parseInt(form.quantity, 10) <= 0)
       return showToast('Sasia duhet të jetë pozitive!', 'error')
-    persist([
-      ...rows,
-      {
-        id: Date.now().toString(),
-        productName: form.productName.trim(),
-        warehouseName: form.warehouseName.trim(),
-        type: form.type,
-        quantity: form.quantity,
-        reason: form.reason.trim(),
-        date: new Date().toISOString(),
-      },
-    ])
-    showToast('Lëvizja u regjistrua!', 'success')
-    setForm({ productName: '', warehouseName: '', type: 'IN', quantity: '', reason: '' })
+    try {
+      await apiPost<ApiListResponse<MovementApiRow>>('/stockmovements', {
+        product_id: form.product_id,
+        warehouse_id: form.warehouse_id,
+        movement_type: form.type.toLowerCase(),
+        quantity: parseInt(form.quantity, 10),
+        reference: form.reason.trim() || null,
+      })
+      showToast('Lëvizja u regjistrua!', 'success')
+      setForm({ product_id: '', warehouse_id: '', type: 'IN', quantity: '', reason: '' })
+      loadMovements()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë regjistrimit të lëvizjes', 'error')
+    }
   }
 
-  function remove(id: string) {
-    if (!confirm('A jeni i sigurt?')) return
-    persist(rows.filter((m) => m.id !== id))
-    showToast('Lëvizja u fshi!', 'success')
-  }
-
-  const sorted = useMemo(() => [...rows].reverse(), [rows])
+  const sorted = useMemo(() => rows, [rows])
+  const warehouseNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    warehouses.forEach((w) => map.set(String(w.id), w.name))
+    return map
+  }, [warehouses])
 
   return (
     <div className="space-y-8">
@@ -72,41 +126,58 @@ export function StockMovementsPage() {
           Lëvizjet e stokut
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Regjistro hyrjet dhe daljet (localStorage).
+          Regjistro hyrjet dhe daljet për tenant-in tuaj.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card glow="cyan">
-          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{stats.total}</div>
+          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{loading ? '—' : stats.total}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Total lëvizje</div>
         </Card>
         <Card glow="violet">
-          <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">{stats.inC}</div>
+          <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">{loading ? '—' : stats.inC}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Hyrje (IN)</div>
         </Card>
         <Card glow="pink">
-          <div className="font-mono text-2xl font-bold text-rose-600 dark:text-rose-300">{stats.outC}</div>
+          <div className="font-mono text-2xl font-bold text-rose-600 dark:text-rose-300">{loading ? '—' : stats.outC}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Dalje (OUT)</div>
         </Card>
       </div>
 
       <Card glow="cyan">
         <CardTitle className="mb-4">Regjistro lëvizje</CardTitle>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {optionsLoading ? (
+          <Skeleton className="h-24 rounded-xl" />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <Label>Produkti *</Label>
-            <Input
-              value={form.productName}
-              onChange={(e) => setForm((f) => ({ ...f, productName: e.target.value }))}
-            />
+            <Select
+              value={form.product_id}
+              onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}
+            >
+              <option value="">— Zgjidh produktin —</option>
+              {products.map((p) => (
+                <option key={String(p.id)} value={String(p.id)}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label>Depoja *</Label>
-            <Input
-              value={form.warehouseName}
-              onChange={(e) => setForm((f) => ({ ...f, warehouseName: e.target.value }))}
-            />
+            <Select
+              value={form.warehouse_id}
+              onChange={(e) => setForm((f) => ({ ...f, warehouse_id: e.target.value }))}
+            >
+              <option value="">— Zgjidh depon —</option>
+              {warehouses.map((w) => (
+                <option key={String(w.id)} value={String(w.id)}>
+                  {w.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label>Lloji *</Label>
@@ -128,8 +199,9 @@ export function StockMovementsPage() {
             <Label>Arsyeja</Label>
             <Input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
           </div>
-        </div>
-        <Button type="button" className="mt-4" onClick={add}>
+          </div>
+        )}
+        <Button type="button" className="mt-4" onClick={add} disabled={optionsLoading}>
           Regjistro
         </Button>
       </Card>
@@ -150,7 +222,15 @@ export function StockMovementsPage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.length === 0 ? (
+              {loading ? (
+                [1, 2, 3].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={7} className="py-2">
+                      <Skeleton className="h-10 w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : sorted.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-500">
                     Nuk ka lëvizje të regjistruara.
@@ -162,33 +242,24 @@ export function StockMovementsPage() {
                     key={m.id}
                     className="border-b border-slate-200/60 hover:bg-cyan-500/5 dark:border-slate-700/50"
                   >
-                    <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{m.productName}</td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{m.warehouseName}</td>
+                    <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{m.product_name || m.product_id}</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">{warehouseNameById.get(String(m.warehouse_id)) || m.warehouse_id}</td>
                     <td className="py-3">
                       <span
                         className={cn(
                           'rounded-lg border px-2 py-0.5 text-xs font-bold',
-                          m.type === 'IN'
+                          m.movement_type?.toUpperCase() === 'IN'
                             ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'
                             : 'border-rose-400/40 bg-rose-500/15 text-rose-800 dark:text-rose-200',
                         )}
                       >
-                        {m.type}
+                        {m.movement_type?.toUpperCase()}
                       </span>
                     </td>
                     <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{m.quantity}</td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{m.reason || '—'}</td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400">{formatDate(m.date)}</td>
-                    <td className="py-3">
-                      <Button
-                        type="button"
-                        variant="danger"
-                        className="px-3 py-1.5 text-xs"
-                        onClick={() => remove(m.id)}
-                      >
-                        Fshi
-                      </Button>
-                    </td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">{m.reference || '—'}</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">{m.created_at ? formatDate(m.created_at) : '—'}</td>
+                    <td className="py-3" />
                   </tr>
                 ))
               )}

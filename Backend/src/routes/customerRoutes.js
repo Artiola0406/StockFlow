@@ -1,4 +1,3 @@
-// TODO: Frontend currently uses localStorage - migrate to this API
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middlewares/authMiddleware');
@@ -22,33 +21,35 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM customers WHERE tenant_id = $1 ORDER BY created_at DESC',
+      'SELECT * FROM customers WHERE tenant_id = $1',
       [tenantId]
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
+    console.error('Error fetching customers:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/stats', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'SELECT COUNT(*) as total FROM customers WHERE tenant_id = $1',
       [tenantId]
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching customer stats:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'SELECT * FROM customers WHERE id = $1 AND tenant_id = $2',
       [req.params.id, tenantId]
@@ -58,6 +59,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching customer by id:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -71,8 +73,8 @@ router.post('/', async (req, res) => {
       message: 'Emri i klientit është i detyrueshëm.'
     });
 
-    const id = Date.now().toString();
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const id = `cust-${Date.now()}`;
+    const tenantId = req.user.tenant_id || 'tenant-default';
 
     const result = await pool.query(
       `INSERT INTO customers (id, name, email, phone, address, tenant_id)
@@ -82,13 +84,14 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error creating customer:', err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const existing = await pool.query(
       'SELECT * FROM customers WHERE id = $1 AND tenant_id = $2',
       [req.params.id, tenantId]
@@ -109,13 +112,14 @@ router.put('/:id', authorize('super_admin', 'manager'), async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error updating customer:', err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.delete('/:id', authorize('super_admin'), async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING id',
       [req.params.id, tenantId]
@@ -128,7 +132,8 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
     }
     res.json({ success: true, message: 'Klienti u fshi.' });
   } catch (err) {
-    res.status(404).json({ success: false, message: err.message });
+    console.error('Error deleting customer:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

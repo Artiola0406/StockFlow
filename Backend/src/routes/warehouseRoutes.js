@@ -1,4 +1,3 @@
-// TODO: Frontend currently uses localStorage - migrate to this API
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middlewares/authMiddleware');
@@ -22,20 +21,21 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
-      'SELECT * FROM warehouses WHERE tenant_id = $1 ORDER BY created_at DESC',
+      'SELECT * FROM warehouses WHERE tenant_id = $1',
       [tenantId]
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
+    console.error('Error fetching warehouses:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/stats', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       `SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE is_active = true) as active
        FROM warehouses WHERE tenant_id = $1`,
@@ -43,26 +43,28 @@ router.get('/stats', async (req, res) => {
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching warehouse stats:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/active', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'SELECT * FROM warehouses WHERE is_active = true AND tenant_id = $1 ORDER BY name',
       [tenantId]
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
+    console.error('Error fetching active warehouses:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'SELECT * FROM warehouses WHERE id = $1 AND tenant_id = $2',
       [req.params.id, tenantId]
@@ -72,6 +74,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching warehouse by id:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -85,8 +88,8 @@ router.post('/', authorize('super_admin', 'manager'), async (req, res) => {
       message: 'Emri i deposë është i detyrueshëm.'
     });
 
-    const id = Date.now().toString();
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const id = `wh-${Date.now()}`;
+    const tenantId = req.user.tenant_id || 'tenant-default';
 
     const result = await pool.query(
       `INSERT INTO warehouses (id, name, location, is_active, tenant_id)
@@ -96,13 +99,14 @@ router.post('/', authorize('super_admin', 'manager'), async (req, res) => {
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error creating warehouse:', err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.put('/:id', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const existing = await pool.query(
       'SELECT * FROM warehouses WHERE id = $1 AND tenant_id = $2',
       [req.params.id, tenantId]
@@ -123,13 +127,14 @@ router.put('/:id', async (req, res) => {
 
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error updating warehouse:', err);
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
 router.delete('/:id', authorize('super_admin'), async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       'DELETE FROM warehouses WHERE id = $1 AND tenant_id = $2 RETURNING id',
       [req.params.id, tenantId]
@@ -142,7 +147,8 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
     }
     res.json({ success: true, message: 'Depoja u fshi.' });
   } catch (err) {
-    res.status(404).json({ success: false, message: err.message });
+    console.error('Error deleting warehouse:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

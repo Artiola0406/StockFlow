@@ -1,68 +1,118 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
-import { useLocalStorageState } from '../hooks/useLocalStorage'
+import { Skeleton } from '../components/ui/Skeleton'
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import type { SupplierRow } from '../types'
+import type { ApiListResponse, SupplierRow } from '../types'
 import { cn } from '../lib/cn'
 
-const KEY = 'suppliers'
+interface SupplierApiRow {
+  id: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  is_active?: boolean
+  isActive?: boolean
+}
 
 export function SuppliersPage() {
   const { showToast } = useToast()
-  const { rows, persist } = useLocalStorageState<SupplierRow[]>(KEY, [])
+  const [rows, setRows] = useState<SupplierRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', email: '', phone: '', isActive: true })
   const [editOpen, setEditOpen] = useState(false)
   const [edit, setEdit] = useState<SupplierRow | null>(null)
 
-  function add() {
+  const mapSupplier = (row: SupplierApiRow): SupplierRow => ({
+    id: String(row.id),
+    name: row.name || '',
+    email: row.email || '',
+    phone: row.phone || '',
+    isActive: row.is_active ?? row.isActive ?? true,
+  })
+
+  const loadSuppliers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiGet<ApiListResponse<SupplierApiRow[]>>('/suppliers')
+      setRows((res.data ?? []).map(mapSupplier))
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë ngarkimit të furnitorëve', 'error')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    loadSuppliers()
+  }, [loadSuppliers])
+
+  async function add() {
     if (!form.name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
     if (!form.email.trim()) return showToast('Email është i detyrueshëm!', 'error')
     if (!form.phone.trim()) return showToast('Telefoni është i detyrueshëm!', 'error')
-    persist([
-      ...rows,
-      {
-        id: Date.now().toString(),
+    try {
+      await apiPost<ApiListResponse<SupplierApiRow>>('/suppliers', {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
-        isActive: form.isActive,
-      },
-    ])
-    showToast('Furnitori u shtua!', 'success')
-    setForm({ name: '', email: '', phone: '', isActive: true })
+        is_active: form.isActive,
+      })
+      showToast('Furnitori u shtua!', 'success')
+      setForm({ name: '', email: '', phone: '', isActive: true })
+      loadSuppliers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë shtimit të furnitorit', 'error')
+    }
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!edit) return
-    persist(rows.map((s) => (s.id === edit.id ? edit : s)))
-    setEditOpen(false)
-    showToast('Furnitori u përditësua!', 'success')
+    try {
+      await apiPut<ApiListResponse<SupplierApiRow>>(`/suppliers/${edit.id}`, {
+        name: edit.name,
+        email: edit.email,
+        phone: edit.phone,
+        is_active: edit.isActive,
+      })
+      setEditOpen(false)
+      showToast('Furnitori u përditësua!', 'success')
+      loadSuppliers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë përditësimit të furnitorit', 'error')
+    }
   }
 
-  function remove(id: string) {
+  async function remove(id: string) {
     if (!confirm('A jeni i sigurt?')) return
-    persist(rows.filter((s) => s.id !== id))
-    showToast('Furnitori u fshi!', 'success')
+    try {
+      await apiDelete<ApiListResponse<unknown>>(`/suppliers/${id}`)
+      showToast('Furnitori u fshi!', 'success')
+      loadSuppliers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë fshirjes së furnitorit', 'error')
+    }
   }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Furnitorët</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxho furnitorët (localStorage).</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxho furnitorët e tenant-it tuaj.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card glow="cyan">
-          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{rows.length}</div>
+          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{loading ? '—' : rows.length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Total furnitorë</div>
         </Card>
         <Card glow="violet">
           <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">
-            {rows.filter((s) => s.isActive).length}
+            {loading ? '—' : rows.filter((s) => s.isActive).length}
           </div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Furnitorë aktiv</div>
         </Card>
@@ -116,7 +166,15 @@ export function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {loading ? (
+                [1, 2, 3].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={5} className="py-2">
+                      <Skeleton className="h-10 w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-10 text-center text-slate-500">
                     Nuk ka furnitorë.

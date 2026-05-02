@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Doughnut } from 'react-chartjs-2'
 import { Package, Euro, AlertTriangle, Tags, Plus, ArrowRightLeft, ClipboardList, BarChart3 } from 'lucide-react'
 import { Card, CardTitle } from '../components/ui/Card'
@@ -7,8 +7,21 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { useProductStats } from '../hooks/useProductStats'
 import { useTheme } from '../context/ThemeContext'
 import { cn } from '../lib/cn'
+import { apiGet } from '../lib/api'
+import { formatCurrency } from '../lib/format'
+import type { ApiListResponse } from '../types'
 
 const NEON = ['#22d3ee', '#a78bfa', '#f472b6', '#38bdf8', '#e879f9', '#2dd4bf']
+
+interface DashboardStats {
+  totalProducts: number
+  totalOrders: number
+  totalWarehouses: number
+  totalCustomers: number
+  totalSuppliers: number
+  lowStockProducts: number
+  totalValue: number
+}
 
 function StatCard({
   label,
@@ -57,7 +70,27 @@ function StatCard({
 
 export function DashboardPage() {
   const { isDark } = useTheme()
-  const { products, loading, stats } = useProductStats()
+  const { products, loading: productLoading, stats } = useProductStats()
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  const loadDashboardStats = useCallback(async () => {
+    setStatsLoading(true)
+    try {
+      const res = await apiGet<ApiListResponse<DashboardStats>>('/dashboard/stats')
+      setDashboardStats(res.data ?? null)
+    } catch {
+      setDashboardStats(null)
+    } finally {
+      setStatsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDashboardStats()
+  }, [loadDashboardStats])
+
+  const loading = productLoading || statsLoading
 
   const chartData = useMemo(() => {
     const catData: Record<string, number> = {}
@@ -132,29 +165,29 @@ export function DashboardPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Produkte gjithsej"
-            value={String(stats.count)}
-            hint="Sipas API-s së produkteve"
+            value={String(dashboardStats?.totalProducts ?? 0)}
+            hint="Nga /api/dashboard/stats"
             icon={Package}
             accent="cyan"
           />
           <StatCard
             label="Vlera totale"
-            value={stats.value}
+            value={formatCurrency(dashboardStats?.totalValue ?? 0)}
             hint="Çmimi × sasia"
             icon={Euro}
             accent="emerald"
           />
           <StatCard
             label="Stok i ulët"
-            value={String(stats.lowCount)}
+            value={String(dashboardStats?.lowStockProducts ?? 0)}
             hint="Më pak se 5 njësi"
             icon={AlertTriangle}
             accent="pink"
           />
           <StatCard
-            label="Kategori"
-            value={String(stats.catCount)}
-            hint="Kategori unike"
+            label="Porosi"
+            value={String(dashboardStats?.totalOrders ?? 0)}
+            hint="Porosi të tenant-it"
             icon={Tags}
             accent="violet"
           />

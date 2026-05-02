@@ -1,7 +1,6 @@
-// TODO: Frontend currently uses localStorage - migrate to this API
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middlewares/authMiddleware');
+const { authenticate } = require('../middlewares/authMiddleware');
 const { tenantFilter } = require('../middlewares/tenantMiddleware');
 const pool = require('../config/database');
 
@@ -22,9 +21,9 @@ if (useDatabase) {
 
 router.get('/', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
-      `SELECT sm.*, p.name AS product_display_name
+      `SELECT sm.*, p.name AS product_name
        FROM stock_movements sm
        LEFT JOIN products p ON p.id = sm.product_id AND p.tenant_id = sm.tenant_id
        WHERE sm.tenant_id = $1
@@ -33,13 +32,14 @@ router.get('/', async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
+    console.error('Error fetching stock movements:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/stats', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
       `SELECT COUNT(*) as total,
               COUNT(*) FILTER (WHERE movement_type = 'in') as inbound,
@@ -49,15 +49,16 @@ router.get('/stats', async (req, res) => {
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching stock movement stats:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const tenantId = req.user.tenant_id || 'tenant-default';
     const result = await pool.query(
-      `SELECT sm.*, p.name AS product_display_name
+      `SELECT sm.*, p.name AS product_name
        FROM stock_movements sm
        LEFT JOIN products p ON p.id = sm.product_id AND p.tenant_id = sm.tenant_id
        WHERE sm.id = $1 AND sm.tenant_id = $2`,
@@ -68,6 +69,7 @@ router.get('/:id', async (req, res) => {
     }
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error fetching stock movement by id:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -81,8 +83,8 @@ router.post('/', async (req, res) => {
       message: 'Product ID, Warehouse ID, dhe Movement Type janë të detyrueshëm.'
     });
 
-    const id = Date.now().toString();
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
+    const id = `mv-${Date.now()}`;
+    const tenantId = req.user.tenant_id || 'tenant-default';
 
     const prodOk = await pool.query(
       'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
@@ -107,69 +109,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error creating stock movement:', err);
     res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-router.put('/:id', async (req, res) => {
-  try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
-    const existing = await pool.query(
-      'SELECT * FROM stock_movements WHERE id = $1 AND tenant_id = $2',
-      [req.params.id, tenantId]
-    );
-    if (existing.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lëvizja nuk u gjet.'
-      });
-    }
-
-    const { product_id, warehouse_id, quantity, movement_type, reference } = req.body;
-
-    const prodOk = await pool.query(
-      'SELECT id FROM products WHERE id = $1 AND tenant_id = $2',
-      [product_id, tenantId]
-    );
-    const whOk = await pool.query(
-      'SELECT id FROM warehouses WHERE id = $1 AND tenant_id = $2',
-      [warehouse_id, tenantId]
-    );
-    if (prodOk.rows.length === 0) {
-      return res.status(400).json({ success: false, message: 'Produkti nuk u gjet për këtë tenant.' });
-    }
-    if (whOk.rows.length === 0) {
-      return res.status(400).json({ success: false, message: 'Depoja nuk u gjet për këtë tenant.' });
-    }
-
-    const result = await pool.query(
-      `UPDATE stock_movements SET product_id=$1, warehouse_id=$2, quantity=$3, movement_type=$4, reference=$5
-       WHERE id=$6 AND tenant_id=$7 RETURNING *`,
-      [product_id, warehouse_id, quantity, movement_type, reference, req.params.id, tenantId]
-    );
-
-    res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
-  try {
-    const tenantId = req.user?.tenant_id || req.tenantId || 'tenant-default';
-    const result = await pool.query(
-      'DELETE FROM stock_movements WHERE id = $1 AND tenant_id = $2 RETURNING id',
-      [req.params.id, tenantId]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Lëvizja nuk u gjet.'
-      });
-    }
-    res.json({ success: true, message: 'Lëvizja u fshi.' });
-  } catch (err) {
-    res.status(404).json({ success: false, message: err.message });
   }
 });
 

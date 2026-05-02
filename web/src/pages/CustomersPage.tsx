@@ -1,73 +1,124 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Label } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
-import { useLocalStorageState } from '../hooks/useLocalStorage'
+import { Skeleton } from '../components/ui/Skeleton'
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import type { Customer } from '../types'
+import type { ApiListResponse, Customer } from '../types'
 
-const KEY = 'customers'
+interface CustomerApiRow {
+  id: string
+  name: string
+  email: string
+  phone: string
+  address?: string | null
+  created_at?: string
+  createdAt?: string
+}
 
 export function CustomersPage() {
   const { showToast } = useToast()
-  const { rows, persist } = useLocalStorageState<Customer[]>(KEY, [])
+  const [rows, setRows] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '' })
   const [editOpen, setEditOpen] = useState(false)
   const [edit, setEdit] = useState<Customer | null>(null)
+
+  const mapCustomer = (row: CustomerApiRow): Customer => ({
+    id: String(row.id),
+    name: row.name || '',
+    email: row.email || '',
+    phone: row.phone || '',
+    address: row.address || '',
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+  })
+
+  const loadCustomers = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiGet<ApiListResponse<CustomerApiRow[]>>('/customers')
+      setRows((res.data ?? []).map(mapCustomer))
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë ngarkimit të klientëve', 'error')
+      setRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    loadCustomers()
+  }, [loadCustomers])
 
   const todayNew = useMemo(() => {
     const t = new Date().toDateString()
     return rows.filter((c) => new Date(c.createdAt).toDateString() === t).length
   }, [rows])
 
-  function add() {
+  async function add() {
     const { name, email, phone, address } = form
     if (!name.trim()) return showToast('Emri është i detyrueshëm!', 'error')
     if (!email.trim()) return showToast('Email është i detyrueshëm!', 'error')
     if (!phone.trim()) return showToast('Telefoni është i detyrueshëm!', 'error')
-    persist([
-      ...rows,
-      {
-        id: Date.now().toString(),
+    try {
+      await apiPost<ApiListResponse<CustomerApiRow>>('/customers', {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        address: address.trim(),
-        createdAt: new Date().toISOString(),
-      },
-    ])
-    showToast('Klienti u shtua!', 'success')
-    setForm({ name: '', email: '', phone: '', address: '' })
+        address: address.trim() || null,
+      })
+      showToast('Klienti u shtua!', 'success')
+      setForm({ name: '', email: '', phone: '', address: '' })
+      loadCustomers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë shtimit të klientit', 'error')
+    }
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!edit) return
-    persist(rows.map((c) => (c.id === edit.id ? edit : c)))
-    setEditOpen(false)
-    showToast('Klienti u përditësua!', 'success')
+    try {
+      await apiPut<ApiListResponse<CustomerApiRow>>(`/customers/${edit.id}`, {
+        name: edit.name,
+        email: edit.email,
+        phone: edit.phone,
+        address: edit.address || null,
+      })
+      setEditOpen(false)
+      showToast('Klienti u përditësua!', 'success')
+      loadCustomers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë përditësimit të klientit', 'error')
+    }
   }
 
-  function remove(id: string) {
+  async function remove(id: string) {
     if (!confirm('A jeni i sigurt?')) return
-    persist(rows.filter((c) => c.id !== id))
-    showToast('Klienti u fshi!', 'success')
+    try {
+      await apiDelete<ApiListResponse<unknown>>(`/customers/${id}`)
+      showToast('Klienti u fshi!', 'success')
+      loadCustomers()
+    } catch (err: any) {
+      showToast(err.message || 'Gabim gjatë fshirjes së klientit', 'error')
+    }
   }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Klientët</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxho klientët (localStorage).</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Menaxho klientët e tenant-it tuaj.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card glow="cyan">
-          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{rows.length}</div>
+          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{loading ? '—' : rows.length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Total klientë</div>
         </Card>
         <Card glow="violet">
-          <div className="font-mono text-2xl font-bold text-violet-600 dark:text-violet-300">{todayNew}</div>
+          <div className="font-mono text-2xl font-bold text-violet-600 dark:text-violet-300">{loading ? '—' : todayNew}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Klientë të rinj (sot)</div>
         </Card>
       </div>
@@ -115,7 +166,15 @@ export function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {loading ? (
+                [1, 2, 3].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={5} className="py-2">
+                      <Skeleton className="h-10 w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-10 text-center text-slate-500">
                     Nuk ka klientë.
