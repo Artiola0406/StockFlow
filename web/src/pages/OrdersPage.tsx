@@ -21,10 +21,8 @@ const STATUS_OPTS = [
 
 interface OrderApiRow {
   id: string
-  customer_id: string
-  product_id: string
-  customer_name?: string | null
-  product_name?: string | null
+  customer_name: string
+  product_name: string
   quantity: number | string
   total_amount: number | string
   status: string
@@ -42,6 +40,18 @@ interface CustomersApiResponse {
   customers?: FormOption[]
 }
 
+interface OrdersListResponse {
+  orders: OrderApiRow[]
+}
+
+interface OrderStatsResponse {
+  stats: {
+    total: number
+    completed: number
+    pending: number
+  }
+}
+
 function statusClass(s: string) {
   const map: Record<string, string> = {
     pending: 'border-amber-400/40 bg-amber-500/15 text-amber-800 dark:text-amber-200',
@@ -57,15 +67,17 @@ export function OrdersPage() {
   const { user } = useAuth()
   const canDeleteOrders = user?.role === 'super_admin'
 
-  const [rows, setRows] = useState<OrderApiRow[]>([])
+  const [orders, setOrders] = useState<OrderApiRow[]>([])
   const [loading, setLoading] = useState(true)
   const [optionsLoading, setOptionsLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
   const [customers, setCustomers] = useState<FormOption[]>([])
   const [products, setProducts] = useState<FormOption[]>([])
+  const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 })
 
   const [form, setForm] = useState({
-    customer_id: '',
-    product_id: '',
+    customer_name: '',
+    product_name: '',
     quantity: '',
     total_amount: '',
     status: 'pending',
@@ -95,13 +107,31 @@ export function OrdersPage() {
   const loadOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiGet<ApiListResponse<OrderApiRow[]>>('/orders')
-      setRows(res.data ?? [])
-    } catch {
-      showToast('Porositë nuk u ngarkuan', 'error')
-      setRows([])
+      const data = await apiGet<OrdersListResponse>('/orders')
+      setOrders(data.orders ?? [])
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Porositë nuk u ngarkuan', 'error')
+      setOrders([])
     } finally {
       setLoading(false)
+    }
+  }, [showToast])
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true)
+    try {
+      const data = await apiGet<OrderStatsResponse>('/orders/stats')
+      const s = data.stats
+      setStats({
+        total: s?.total ?? 0,
+        completed: s?.completed ?? 0,
+        pending: s?.pending ?? 0,
+      })
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Statistikat nuk u ngarkuan', 'error')
+      setStats({ total: 0, completed: 0, pending: 0 })
+    } finally {
+      setStatsLoading(false)
     }
   }, [showToast])
 
@@ -111,16 +141,17 @@ export function OrdersPage() {
 
   useEffect(() => {
     loadOrders()
-  }, [loadOrders])
+    loadStats()
+  }, [loadOrders, loadStats])
 
-  const productById = useMemo(() => {
+  const productByName = useMemo(() => {
     const m = new Map<string, FormOption>()
-    products.forEach((p) => m.set(String(p.id), p))
+    products.forEach((p) => m.set(p.name, p))
     return m
   }, [products])
 
-  function applyProductPrice(productId: string, qtyStr: string) {
-    const p = productById.get(productId)
+  function applyProductPrice(productName: string, qtyStr: string) {
+    const p = productByName.get(productName)
     if (!p || p.price === undefined || p.price === null) return
     const q = parseInt(qtyStr, 10)
     if (!q || q <= 0) return
@@ -130,28 +161,29 @@ export function OrdersPage() {
   }
 
   async function add() {
-    const { customer_id, product_id, quantity, total_amount, status } = form
-    if (!customer_id) return showToast('Zgjidhni klientin.', 'error')
-    if (!product_id) return showToast('Zgjidhni produktin.', 'error')
+    const { customer_name, product_name, quantity, total_amount, status } = form
+    if (!customer_name) return showToast('Zgjidhni klientin.', 'error')
+    if (!product_name) return showToast('Zgjidhni produktin.', 'error')
     if (!quantity || parseInt(quantity, 10) <= 0) return showToast('Sasia duhet të jetë pozitive!', 'error')
     if (!total_amount || parseFloat(total_amount) <= 0) return showToast('Totali duhet të jetë pozitiv!', 'error')
     try {
-      await apiPost<ApiListResponse<OrderApiRow>>('/orders', {
-        customer_id,
-        product_id,
+      await apiPost<{ order: OrderApiRow }>('/orders', {
+        customer_name,
+        product_name,
         quantity: parseInt(quantity, 10),
         total_amount: parseFloat(total_amount),
         status,
       })
       showToast('Porosia u shtua!', 'success')
       setForm({
-        customer_id: '',
-        product_id: '',
+        customer_name: '',
+        product_name: '',
         quantity: '',
         total_amount: '',
         status: 'pending',
       })
-      loadOrders()
+      await loadOrders()
+      await loadStats()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Gabim', 'error')
     }
@@ -160,16 +192,17 @@ export function OrdersPage() {
   async function saveEdit() {
     if (!edit) return
     try {
-      await apiPut<ApiListResponse<OrderApiRow>>(`/orders/${edit.id}`, {
-        customer_id: edit.customer_id,
-        product_id: edit.product_id,
+      await apiPut<{ order: OrderApiRow }>(`/orders/${edit.id}`, {
+        customer_name: edit.customer_name,
+        product_name: edit.product_name,
         quantity: Number(edit.quantity),
         total_amount: Number(edit.total_amount),
         status: edit.status,
       })
       setEditOpen(false)
       showToast('Porosia u përditësua!', 'success')
-      loadOrders()
+      await loadOrders()
+      await loadStats()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Gabim', 'error')
     }
@@ -178,29 +211,14 @@ export function OrdersPage() {
   async function remove(id: string) {
     if (!confirm('A jeni i sigurt?')) return
     try {
-      await apiDelete<ApiListResponse<unknown>>(`/orders/${id}`)
+      await apiDelete<{ message: string }>(`/orders/${id}`)
       showToast('Porosia u fshi!', 'success')
-      loadOrders()
+      await loadOrders()
+      await loadStats()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Gabim', 'error')
     }
   }
-
-  const stats = useMemo(
-    () => ({
-      total: rows.length,
-      confirmed: rows.filter((o) => o.status === 'completed').length,
-      pending: rows.filter((o) => o.status === 'pending').length,
-    }),
-    [rows],
-  )
-
-  const sorted = useMemo(() => [...rows].reverse(), [rows])
-
-  const displayCustomer = (o: OrderApiRow) =>
-    o.customer_name?.trim() || o.customer_id || '—'
-  const displayProduct = (o: OrderApiRow) =>
-    o.product_name?.trim() || o.product_id || '—'
 
   return (
     <div className="space-y-8">
@@ -213,17 +231,29 @@ export function OrdersPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card glow="cyan">
-          <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{stats.total}</div>
+          {statsLoading ? (
+            <Skeleton className="h-9 w-16" />
+          ) : (
+            <div className="font-mono text-2xl font-bold text-cyan-600 dark:text-cyan-300">{stats.total}</div>
+          )}
           <div className="text-sm text-slate-500 dark:text-slate-400">Total porosi</div>
         </Card>
         <Card glow="violet">
-          <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">
-            {stats.confirmed}
-          </div>
+          {statsLoading ? (
+            <Skeleton className="h-9 w-16" />
+          ) : (
+            <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-300">
+              {stats.completed}
+            </div>
+          )}
           <div className="text-sm text-slate-500 dark:text-slate-400">Të përfunduara</div>
         </Card>
         <Card glow="pink">
-          <div className="font-mono text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.pending}</div>
+          {statsLoading ? (
+            <Skeleton className="h-9 w-16" />
+          ) : (
+            <div className="font-mono text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.pending}</div>
+          )}
           <div className="text-sm text-slate-500 dark:text-slate-400">Në pritje</div>
         </Card>
       </div>
@@ -237,12 +267,12 @@ export function OrdersPage() {
             <div>
               <Label>Klienti *</Label>
               <Select
-                value={form.customer_id}
-                onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}
+                value={form.customer_name}
+                onChange={(e) => setForm((f) => ({ ...f, customer_name: e.target.value }))}
               >
                 <option value="">— Zgjidh klientin —</option>
                 {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.name}>
                     {c.name}
                   </option>
                 ))}
@@ -256,16 +286,16 @@ export function OrdersPage() {
             <div>
               <Label>Produkti *</Label>
               <Select
-                value={form.product_id}
+                value={form.product_name}
                 onChange={(e) => {
-                  const pid = e.target.value
-                  setForm((f) => ({ ...f, product_id: pid }))
-                  applyProductPrice(pid, form.quantity || '1')
+                  const pname = e.target.value
+                  setForm((f) => ({ ...f, product_name: pname }))
+                  applyProductPrice(pname, form.quantity || '1')
                 }}
               >
                 <option value="">— Zgjidh produktin —</option>
                 {products.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.name}>
                     {p.name}
                   </option>
                 ))}
@@ -285,7 +315,7 @@ export function OrdersPage() {
                 onChange={(e) => {
                   const q = e.target.value
                   setForm((f) => ({ ...f, quantity: q }))
-                  if (form.product_id) applyProductPrice(form.product_id, q)
+                  if (form.product_name) applyProductPrice(form.product_name, q)
                 }}
               />
             </div>
@@ -328,30 +358,32 @@ export function OrdersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-cyan-500/15 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-cyan-400/20 dark:text-slate-400">
-                  <th className="pb-3">Klienti</th>
-                  <th className="pb-3">Produkti</th>
-                  <th className="pb-3">Sasia</th>
-                  <th className="pb-3">Totali</th>
-                  <th className="pb-3">Statusi</th>
-                  <th className="pb-3">Data</th>
+                  <th className="pb-3">KLIENTI</th>
+                  <th className="pb-3">PRODUKTI</th>
+                  <th className="pb-3">SASIA</th>
+                  <th className="pb-3">TOTALI</th>
+                  <th className="pb-3">STATUSI</th>
+                  <th className="pb-3">DATA</th>
                   <th className="pb-3">Veprimet</th>
                 </tr>
               </thead>
               <tbody>
-                {sorted.length === 0 ? (
+                {orders.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-10 text-center text-slate-500">
                       Nuk ka porosi.
                     </td>
                   </tr>
                 ) : (
-                  sorted.map((o) => (
+                  orders.map((o) => (
                     <tr
                       key={o.id}
                       className="border-b border-slate-200/60 hover:bg-cyan-500/5 dark:border-slate-700/50"
                     >
-                      <td className="py-3 font-medium text-slate-800 dark:text-slate-100">{displayCustomer(o)}</td>
-                      <td className="py-3 text-slate-500 dark:text-slate-400">{displayProduct(o)}</td>
+                      <td className="py-3 font-medium text-slate-800 dark:text-slate-100">
+                        {o.customer_name?.trim() || '—'}
+                      </td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400">{o.product_name?.trim() || '—'}</td>
                       <td className="py-3 text-slate-500 dark:text-slate-400">{o.quantity}</td>
                       <td className="py-3 font-medium text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(o.total_amount)}
@@ -410,11 +442,11 @@ export function OrdersPage() {
               <div>
                 <Label>Klienti</Label>
                 <Select
-                  value={String(edit.customer_id)}
-                  onChange={(e) => setEdit({ ...edit, customer_id: e.target.value })}
+                  value={String(edit.customer_name ?? '')}
+                  onChange={(e) => setEdit({ ...edit, customer_name: e.target.value })}
                 >
                   {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
+                    <option key={c.id} value={c.name}>
                       {c.name}
                     </option>
                   ))}
@@ -423,13 +455,13 @@ export function OrdersPage() {
               <div>
                 <Label>Produkti</Label>
                 <Select
-                  value={String(edit.product_id)}
+                  value={String(edit.product_name ?? '')}
                   onChange={(e) => {
-                    const pid = e.target.value
+                    const pname = e.target.value
                     setEdit((prev) => {
                       if (!prev) return prev
-                      const next = { ...prev, product_id: pid }
-                      const p = productById.get(pid)
+                      const next = { ...prev, product_name: pname }
+                      const p = productByName.get(pname)
                       if (p?.price != null) {
                         const q = parseInt(String(prev.quantity), 10) || 1
                         const unit = parseFloat(String(p.price))
@@ -442,7 +474,7 @@ export function OrdersPage() {
                   }}
                 >
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.name}>
                       {p.name}
                     </option>
                   ))}
@@ -459,7 +491,7 @@ export function OrdersPage() {
                       setEdit((prev) => {
                         if (!prev) return prev
                         const next = { ...prev, quantity: q }
-                        const p = productById.get(String(prev.product_id))
+                        const p = productByName.get(String(prev.product_name))
                         if (p?.price != null) {
                           const n = parseInt(q, 10) || 1
                           const unit = parseFloat(String(p.price))

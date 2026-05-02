@@ -51,6 +51,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
       const errorData = await res.json()
       if (errorData.message) {
         errorMessage = errorData.message
+      } else if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error
       }
     } catch {
       // If JSON parsing fails, try to get text response
