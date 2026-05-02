@@ -1,180 +1,138 @@
-<div align="center">
+---
+# StockFlow — Neural Inventory System
 
-![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
-![Project Type](https://img.shields.io/badge/Projekt-Akademik-blue?style=flat-square)
-![Stack](https://img.shields.io/badge/Stack-React_%7C_Node_%7C_PostgreSQL-orange?style=flat-square)
+> Sistem web për menaxhim inventari me multi-tenancy, 
+> role-based access dhe përditësim automatik stoku.
 
-</div>
-
-# StockFlow — Sistem i menaxhimit të inventarit
-
-**Aplikacion web shumë-klientësh (multi-tenant)** për produkte, depo, lëvizje stoku, furnitorë, klientë dhe porosi, me panel statistikash, kërkim dhe akses të kontrolluar sipas roleve.
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://stockflow-ltnv.onrender.com)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/Artiola0406/StockFlow)
 
 ---
 
-## Përshkrimi i projektit
-
-StockFlow centralizon inventarin dhe operacionet ditore të një biznesi: shtim dhe përditësim produktesh, gjurmim në depo, regjistrim lëvizjesh stoku, menaxhim furnitorësh dhe klientësh, si dhe **porosi që kontrollojnë stokun** dhe **përditësojnë automatikisht sasinë** e produktit pas shitjes (kur emri i produktit në porosi përputhet me produktin në databazë). Të dhënat janë **të ndara sipas biznesit** (`tenant_id`); çdo regjistrim i ri krijon një tenant dhe përdorues me role të ndryshme (pronar, menaxher, staf).
-
----
-
-## Funksionalitetet kryesore
-
-| Funksioni | Përshkrim |
-|-----------|-----------|
-| **Autentifikim** | Regjistrim biznesi, hyrje me JWT, sesion me `/api/auth/me` |
-| **Produktet** | CRUD, SKU automatike nëse mungon, statistika stoku të ulët |
-| **Depo & lëvizje stoku** | Depo dhe regjistrim lëvizjesh (hyrje/dalje) për tenant |
-| **Furnitorë & klientë** | Menaxhim kontaktesh dhe të dhënash bazë |
-| **Porosi** | Krijim porosish; refuzim nëse stoku nuk mjafton; ulje sasi pas porosisë |
-| **Dashboard & raporte** | Statistika agregate; faqe raportesh me grafikë (nga të dhënat e produkteve) |
-| **Kërkim** | Kërkim në produkte, klientë, furnitorë dhe depo brenda tenant-it |
-| **Ekipi** | Pamje e përdoruesve të tenant-it; faqe opsionale “Përdoruesit” për operator platforme (e kufizuar në kod) |
-
-Funksione **të planifikuara** (jo të implementuara plotësisht si produkt komercial): parashikim AI, faturim i plotë, njoftime automatike për stok minimal, audit i detajuar.
+## Problemi që zgjidh
+Bizneset e vogla menaxhojnë stokun me Excel — StockFlow e 
+centralizon në një platformë me izolim të plotë të të dhënave 
+për çdo biznes (multi-tenancy).
 
 ---
 
-## Stivi teknologjik
+## Features
+- Regjistrim biznesi me krijim automatik të ekipit (pronar + menaxher + staf)
+- Multi-tenancy — çdo biznes sheh vetëm të dhënat e veta
+- Role-based access — Super Admin, Menaxher, Staf
+- Produkte me SKU auto-gjenerim
+- Porosi me kontroll stoku + ulje automatike sasisë
+- Lëvizje stoku IN/OUT
+- Dashboard me statistika live
+- Kërkim global (produkte, klientë, furnitorë, depo)
+- Menaxhim ekipit
+
+---
+
+## Tech Stack
 
 | Shtresa | Teknologji |
 |---------|------------|
-| **Frontend** | React, TypeScript, Vite, Tailwind CSS, React Router, Chart.js (`web/`) |
-| **Backend** | Node.js, Express (`Backend/src/`) |
-| **Databaza** | PostgreSQL (`pg`) |
-| **Siguria** | JWT, bcrypt për fjalëkalime |
-
-Arkitektura: API REST nën `/api/*`; shumë rrugë përdorin `authenticate`, `tenantFilter` dhe query SQL me `tenant_id`. Frontend-i përdor `fetch` përmes `web/src/lib/api.ts`. Pas `npm run build` në `web/`, serveri Express mund të shërbejë statikisht SPA-në nga `web/dist` (`Backend/src/app.js`).
-
----
-
-## Kërkesat
-
-- Node.js 18+ (për Render rekomandohet Node 20, shih `render.yaml`)
-- PostgreSQL (rekomanduar për të gjitha veçoritë)
-- npm
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS |
+| Backend | Node.js, Express |
+| Database | PostgreSQL |
+| Auth | JWT (7 ditë), bcrypt |
+| Deployment | Render (Web Service + PostgreSQL) |
 
 ---
 
-## Si ta nisësh lokalisht
+## Architecture
+StockFlow/
+├── Backend/
+│   └── src/
+│       ├── routes/        # API endpoints (products, orders, auth...)
+│       ├── middlewares/   # authenticate, tenantFilter, requirePermission
+│       ├── config/        # database.js, auth.js (ROLE_PERMISSIONS)
+│       ├── services/      # business logic
+│       └── repositories/  # data access layer
+├── web/
+│   └── src/
+│       ├── pages/         # React pages
+│       ├── components/    # Layout, Sidebar, ProtectedRoute
+│       ├── context/       # AuthContext, ThemeContext
+│       └── lib/           # api.ts, hooks
+└── docs/
+└── demo-plan.md
 
-### 1. Instalimi
+---
 
+## How Multi-tenancy Works
+Every user has a `tenant_id` in their JWT token.
+Every SQL query filters: `WHERE tenant_id = $1`
+`tenantMiddleware.js` sets `req.tenantId` automatically on every request.
+
+---
+
+## Local Setup
+
+### 1. Clone
 ```bash
-git clone https://github.com/Artiola0406/StockFlow.git
+git clone https://github.com/Artiola0406/StockFlow
 cd StockFlow
+```
+
+### 2. Install
+```bash
 cd Backend && npm install
 cd ../web && npm install
 ```
 
-### 2. Databaza
-
-Apliko skemat e projektit (p.sh. `Backend/src/database/schema.sql` dhe skriptet përkatëse sipas mjedisit tënd).
-
-### 3. Variablat e mjedisit — Backend
-
-Krijo `Backend/.env` (shih `Backend/.env.example`):
-
-| Variabla | Përshkrim |
-|----------|-----------|
-| `DATABASE_URL` | Connection string për PostgreSQL |
-| `JWT_SECRET` | Sekret i fortë për nënshkrimin e JWT (i detyrueshëm për login/regjistrim në rrugët që përdorin `getJwtSecret`) |
-| `PORT` | Opsionale; nëse mungon, përdoret **5000** (`Backend/src/app.js`) |
-
-### 4. Nisja e backend-it
-
-```bash
-cd Backend
-npm start
-```
-
-API: `http://localhost:5000`
-
-### 5. Nisja e frontend-it (zhvillim)
-
-```bash
-cd web
-npm run dev
-```
-
-Vite përdor **proxy** për `/api` drejt `http://localhost:5000` (`web/vite.config.ts`). Hap URL-në që shfaq Vite (zakonisht `http://localhost:5173`).
-
-### 6. Një server për prodhim lokal
-
-```bash
-cd web && npm run build
-cd ../Backend && npm start
-```
-
-Express shërben `web/dist` nëse ekziston.
-
----
-
-## Variablat e mjedisit (përmbledhje)
-
-**Backend (`Backend/.env`):**
-
+### 3. Environment — create Backend/.env
 ```env
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
-JWT_SECRET=ndrysho-me-nje-sekret-te-forte
+DATABASE_URL=postgresql://user:password@host/dbname
+JWT_SECRET=your_strong_secret_key
 PORT=5000
+NODE_ENV=development
 ```
 
-**Frontend:** zakonisht nuk nevojitet `.env` për API — përdoret rruga relative `/api` me proxy në dev dhe i njëjti origjinë kur SPA shërbehet nga Express.
+### 4. Run
+```bash
+# Terminal 1
+cd Backend && npm start
 
----
-
-## Deploy në Render
-
-Projekti përfshin `render.yaml`:
-
-- **Root Directory:** `Backend`
-- **Build Command:** `npm install && cd ../web && npm install --include=dev && npm run build`
-- **Start Command:** `npm start`
-
-Në panelin e Render shto: `DATABASE_URL`, `JWT_SECRET`, dhe `NODE_VERSION` (p.sh. `20`).
-
----
-
-## Struktura e shkurtër e projektit
-
-```
-StockFlow/
-├── Backend/src/       # Express, routes, middlewares, services, repositories
-├── web/src/           # Aplikacioni kryesor React (UI)
-├── Database/          # Skripta SQL ndihmëse
-├── Docs/              # Dokumentim shtesë (përfshi `demo-plan.md` për prezantimin)
-├── Frontend/          # Prototip statik (jo SPA kryesore)
-└── render.yaml        # Blueprint për Render
+# Terminal 2
+cd web && npm run dev
 ```
 
----
-
-## Shënime për zhvilluesit
-
-- Aplikacioni kryesor i përdoruesit është në **`web/`**; dosja **`Frontend/`** përmban një prototip më të vjetër HTML/Bootstrap.
-- Lejet në API përcaktohen në `Backend/src/config/auth.js`; UI përdor gjithashtu rregulla lokale në `web/src/context/AuthContext.tsx` — duhet mbajtur konsistenca kur ndryshohen rolet.
+Frontend: http://localhost:5173
+Backend API: http://localhost:5000
 
 ---
 
-## Autori
-
-| | |
-|---|--|
-| **Emri** | Artiola Qollaku |
-| **Universiteti** | Universiteti "Isa Boletini" — Mitrovicë |
-| **Fakulteti** | Fakulteti i Inxhinierisë Kompjuterike |
-| **Lënda** | Inxhinieri Softuerike |
-| **GitHub** | [Artiola0406](https://github.com/Artiola0406) |
+## Deployment (Render)
+- **Web Service:** Root dir `Backend`, build `npm install && cd ../web && npm install && npm run build`, start `npm start`
+- **PostgreSQL:** Render managed database
+- **Environment vars:** `DATABASE_URL`, `JWT_SECRET`, `PORT=5000`
 
 ---
 
-## Licenca / përdorim akademik
+## API Endpoints
 
-© 2026 Artiola Qollaku. Projekti është krijuar për qëllime akademike.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/auth/register | Regjistro biznes + ekip |
+| POST | /api/auth/login | Login + JWT |
+| GET | /api/products | Produktet e tenant-it |
+| POST | /api/orders | Krijo porosi + zbrit stok |
+| GET | /api/dashboard/stats | Statistika tenant |
+| GET | /api/search?q= | Kërkim global |
 
 ---
 
-## Pamje nga aplikacioni
+## Known Limitations
+- Lejet janë hardcoded në frontend (AuthContext.tsx)
+- Porosia dhe update stoku nuk janë në transaksion atomik
+- Lidhja porosi-produkt bëhet me emër, jo me ID
 
-_Shto këtu screenshot-e: hyrja, paneli, produktet, porositë, ekipi._
+---
+
+*Studente: Artiola Qollaku*
+*Universiteti "Isa Boletini" — Mitrovicë*
+*Lënda: Software Engineering*
+
+---

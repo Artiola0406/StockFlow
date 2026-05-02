@@ -1,82 +1,199 @@
-# Plani i demonstrimit — StockFlow
+---
+# Plani i Demonstrimit — StockFlow
 
-Dokument për prezantimin e projektit (kurs / provim), në përputhje me kërkesat e profesorit.
+## 1. Titulli i projektit
+**StockFlow** — Sistem web për menaxhim inventari dhe operacionesh
+me multi-tenancy, role-based access, dhe përditësim automatik stoku.
+
+**Live URL:** https://stockflow-ltnv.onrender.com
+**GitHub:** https://github.com/Artiola0406/StockFlow
 
 ---
 
-## Titulli i projektit
+## 2. Problemi që zgjidh
+Bizneset e vogla menaxhojnë stokun me Excel ose metoda të 
+shpërndara — kjo shkakton:
+- Gabime në sasi produktesh
+- Porosi pa kontroll disponueshmërie
+- Mungesë pamjeje të përgjithshme për biznesin
 
-**StockFlow** — sistem web për menaxhim inventari dhe operacionesh (produkte, depo, lëvizje stoku, furnitorë, klientë, porosi) me **ndarje të të dhënave sipas biznesit (multi-tenant)** dhe **kontroll aksesi me role** (JWT + leje për çdo modul API).
-
----
-
-## Problemi që zgjidh
-
-Bizneset e vogla dhe të mesme shpesh mbajnë stokun në Excel ose në disa burime të ndara, çka shkakton gabime në sasi, vështirësi në gjurmimin e shitjeve dhe mungesë të një pamjeje të përbashkët. StockFlow:
-
-- **Centralizon** produktet dhe sasinë në një vend (`web/src/pages/ProductsPage.tsx` → `GET/POST /api/products`, `Backend/src/routes/productRoutes.js`).
-- Lejon **porosi** me **kontroll disponueshmërie** para se të ruhet porosia (`Backend/src/routes/orderRoutes.js`, rreshtat ~58–70): nëse stoku nuk mjafton, kthehet gabim `400` me mesazh të qartë.
-- Pas krijimit të porosisë, **përditësohet automatikisht** fusha `quantity` e produktit kur emri i produktit në porosi përputhet me një produkt të tenant-it (i njëjti file, rreshtat ~88–105).
-- Ofron **panel statistikash** për tenant (`Backend/src/routes/dashboardRoutes.js`, `web/src/pages/DashboardPage.tsx`) dhe **kërkim** brenda të dhënave të biznesit (`Backend/src/routes/searchRoutes.js`).
+**StockFlow e zgjidh duke:**
+- Centralizuar produktet dhe sasinë në një platformë
+- Kontrolluar stokun para çdo porosie (nëse nuk mjafton → gabim 400)
+- Zbritur automatikisht sasinë pas shitjes
+- Izoluar të dhënat për çdo biznes (multi-tenancy)
 
 ---
 
-## Përdoruesit kryesorë
+## 3. Përdoruesit kryesorë
 
-1. **Pronari / administratori i biznesit** — regjistron biznesin në `web/src/pages/RegisterPage.tsx`; backend-i krijon tenant dhe përdorues në `Backend/src/routes/authRoutes.js` (`POST /register`). Hyn si `super_admin` në kuptimin e tenant-it (jo domosdoshmërisht operator i gjithë platformës).
-2. **Menaxheri dhe stafi** — llogari të krijuara gjatë regjistrimit (email sintetik `menaxher<slug>@stockflow.com` dhe `staf<slug>@stockflow.com` në kod). Lejet ndahen sipas `ROLE_PERMISSIONS` në `Backend/src/config/auth.js` dhe në UI përmes `hasPermission` në `web/src/context/AuthContext.tsx` dhe filtrit të navigimit në `web/src/components/layout/Sidebar.tsx`.
-3. **Operatori i platformës (opsional në demo)** — faqja “Përdoruesit” (`web/src/pages/PerdoruesitPage.tsx`) thërret `GET /api/users/all` (`Backend/src/routes/userRoutes.js`), e cila në kod lejon akses vetëm për përdorues me `tenant_id === 'tenant-artiola'` dhe rol të përshtatshëm (`web/src/lib/platformAdmin.ts`).
+| Roli | Përshkrimi | Aksesi |
+|------|------------|--------|
+| **Pronari (Super Admin)** | Regjistron biznesin, menaxhon gjithçka | Full access |
+| **Menaxheri** | Menaxhon produktet, porositë, klientët | Pa fshirje |
+| **Stafi** | Regjistron lëvizje, shikon produkte | Akses i kufizuar |
 
----
-
-## Flow-i që do ta demonstrojmë (live)
-
-| Hapi | Veprimi | Ku në kod |
-|------|---------|-----------|
-| 1 | Regjistrim biznesi: emër, email, fjalëkalim, emër biznesi | `RegisterPage.tsx` → `POST /api/auth/register` |
-| 2 | Ruajtja e kredencialeve të ekipit (sipas përgjigjes së serverit) dhe hyrje | `LoginPage.tsx` → `POST /api/auth/login` |
-| 3 | Shtim produkti me sasi dhe çmim | `ProductsPage.tsx` → `POST /api/products` |
-| 4 | Verifikim në listë dhe në dashboard | `GET /api/products`, `GET /api/dashboard/stats` |
-| 5 | Krijim porosie: zgjedhje klienti dhe produkti, sasi | `OrdersPage.tsx` → `POST /api/orders` |
-| 6 | Verifikim që **sasia e produktit** është ulur dhe që porosia shfaqet në listë | `ProductsPage` / `OrdersPage`, `orderRoutes.js` |
-
-Nëse kohë: **kërkim** në shiritin e kërkimit (përdor `GET /api/search?q=...`) dhe faqja **Ekipi im** (`GET /api/tenants/users`).
+Kur një biznes regjistrohet, sistemi krijon automatikisht 
+të tre llogaritë — pronari, menaxheri dhe stafi.
 
 ---
 
-## Një problem real që e kemi zgjidhur
+## 4. Flow-i që do ta demonstrojmë
 
-**Trajtimi i gabimeve në klientin HTTP** në `web/src/lib/api.ts`:
+**Flow i zgjedhur:** Regjistrim → Login → Produkt → Porosi → Stoku
 
-- **Problemi:** Përgjigjet jo-JSON (p.sh. faqe gabimi HTML nga proxy) ose përgjigje gabimi pa strukturë të pritshme mund të shkaktonin sjellje të keqe ose mesazhe të paqarta për përdoruesin.
-- **Zgjidhja:** Funksioni `handleResponse` kontrollon `res.ok`, përpiqet të lexojë `message` ose `error` nga JSON, përndryshe një pjesë të tekstit të përgjigjes; për statusin `401` pastron sesionin dhe ridrejton te faqja e hyrjes. Kjo është përshkruar edhe në `Docs/improvement-report.md` (seksioni për API client).
+**Pse ky flow:**
+Tregon të gjithë ciklin kryesor të aplikacionit në 4 minuta:
+nga krijimi i biznesit, deri tek efekti automatik i një shitjeje
+në inventar. Përfshin autentifikim, CRUD, dhe logjikë biznesi.
 
-**Alternativë për t’u përmendur në gojë:** kontrolli i stokut para insert-it të porosisë dhe zbritja e sasisë pas saj në `Backend/src/routes/orderRoutes.js`.
+**Hapat e saktë:**
 
----
-
-## Çka mbetet ende e dobët
-
-- **Lejet në UI** janë ende të përkthyera nga `ROLE_PERMISSIONS` lokale në `AuthContext.tsx`, ndërsa `GET /api/auth/me` kthen `permissions: []` — idealisht burimi i vetëm i lejeve do të ishte serveri, për të shmangur desinkronizimin me backend.
-- **Transaksioni SQL:** insert i porosisë dhe `UPDATE` i `products.quantity` nuk janë në një `BEGIN/COMMIT` të vetëm — në skenarë të rrallë dështimi midis dy hapave mund të lërë të dhëna të papërshtatshme.
-- **Lidhja porosi–produkt** bëhet me **emër produkti** (`product_name`), jo me ID — emra të dyfishtë ose gabime shtypi e bëjnë më të brishtë.
-- **Regjistrimi:** fjalëkalimet e menaxherit/stafit janë të parashikueshme sipas modelit në kod (`...2024!`) — e pranueshme për akademi, jo për prodhim.
-- **“Përdoruesit” globalë** varen nga një `tenant_id` i ngurtë në kod (`userRoutes.js` / `platformAdmin.ts`).
-- Ekziston një **prototip i vjetër** në `Frontend/index.html` — nuk është aplikacioni kryesor; demo duhet bërë me projektin në `web/`.
-
----
-
-## Struktura e prezantimit (5–7 minuta)
-
-| Kohë | Përmbajtje |
-|------|------------|
-| **0:00 – 0:45** | Çfarë është StockFlow; problemi i biznesit (inventar i shpërndarë vs sistem i centralizuar). |
-| **0:45 – 1:30** | Stivi: React + Vite, Node/Express, PostgreSQL, JWT; shkurt multi-tenancy (`tenant_id`, `tenantMiddleware.js`). |
-| **1:30 – 3:30** | **Demo live:** regjistrim ose login → shtim produkti → krijim porosi → trego që stoku ka rënë dhe porosia është në listë. |
-| **3:30 – 4:45** | Një problem teknik i zgjidhur: `handleResponse` në `api.ts` (ose kontrolli i stokut në `orderRoutes.js`). |
-| **4:45 – 5:45** | Kufizimet: lejet në frontend, transaksioni, lidhja me emër produkti. |
-| **5:45 – 7:00** | Pyetje nga auditori / profesori. |
+| # | Veprimi | URL | Backend |
+|---|---------|-----|---------|
+| 1 | Regjistro biznes të ri | /register | POST /api/auth/register |
+| 2 | Shiko kredencialet e ekipit | /register (success screen) | — |
+| 3 | Kyçu si pronar | /login | POST /api/auth/login |
+| 4 | Shiko Dashboard — statistikat | /dashboard | GET /api/dashboard/stats |
+| 5 | Shto produkt (SKU auto) | /products | POST /api/products |
+| 6 | Shto klient | /customers | POST /api/customers |
+| 7 | Krijo porosi | /orders | POST /api/orders |
+| 8 | Verifiko stokun e ri | /products | GET /api/products |
 
 ---
 
-*Dokumenti u përditësua për përputhje me kodin në repo (routes, faqet React, middleware).*
+## 5. Një problem real që e kemi zgjidhur
+
+### Problemi: Të gjithë përdoruesit shihnin të dhënat e njëri-tjetrit
+
+**Ku ishte problemi:**
+- Backend-i nuk filtronte të dhënat sipas biznesit
+- Frontend-i ruante të dhënat në localStorage pa izolim
+- Regjistrimi vendoste të gjithë përdoruesit në tenant_id = 1
+
+**Si u zgjidh:**
+
+**Hapi 1 — Çdo regjistrim krijon tenant unik:**
+```javascript
+// Backend/src/routes/authRoutes.js
+const tenantId = 'tenant-' + Date.now()
+await pool.query(
+  'INSERT INTO tenants (id, name, slug, ...) VALUES ($1, $2, $3, ...)',
+  [tenantId, businessName, slug, ...]
+)
+```
+
+**Hapi 2 — tenant_id përfshihet në JWT:**
+```javascript
+const token = jwt.sign(
+  { id, email, role, user_role, tenant_id: tenantId },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+)
+```
+
+**Hapi 3 — Çdo query SQL filtron sipas tenant:**
+```javascript
+// Backend/src/routes/productRoutes.js
+const tenantId = req.user.tenant_id || 'tenant-default'
+SELECT * FROM products WHERE tenant_id = $1
+```
+
+**Hapi 4 — tenantMiddleware vendos tenant automatikisht:**
+```javascript
+// Backend/src/middlewares/tenantMiddleware.js
+req.tenantId = req.user.tenant_id
+```
+
+**Rezultati:** Çdo biznes sheh vetëm të dhënat e veta.
+E verifikueshme live: regjistro dy biznese → secili sheh vetëm produktet e veta.
+
+---
+
+## 6. Çka mbetet ende e dobët
+
+**1. Lejet janë hardcoded në frontend**
+- Problemi: `ROLE_PERMISSIONS` në `AuthContext.tsx` është kopje lokale
+- Idealisht: GET /api/auth/me do të kthente listën e lejeve nga serveri
+
+**2. Transaksioni SQL nuk është atomik**
+- Problemi: INSERT porosia dhe UPDATE stoku janë dy hapa të veçantë
+- Rreziku: nëse dështon UPDATE, porosia ekziston pa zbritje stoku
+- Zgjidhja ideale: BEGIN/COMMIT transaction
+
+**3. Lidhja porosi-produkt me emër**
+- Bëhet me `product_name` (tekst), jo me `product_id`
+- Emra të njëjtë ose gabime shtypi mund të shkaktojnë probleme
+
+---
+
+## 7. Struktura e prezantimit (5–6 minuta)
+
+| Koha | Seksioni | Përmbajtja |
+|------|----------|------------|
+| 0:00–0:45 | **Hyrja** | Çfarë është StockFlow, problemi real i biznesit |
+| 0:45–1:30 | **Stack teknik** | React, Node.js, PostgreSQL, JWT, Render, multi-tenancy |
+| 1:30–3:30 | **DEMO LIVE** | Regjistrim → Login → Produkt → Porosi → Stoku |
+| 3:30–4:30 | **Problemi teknik** | Multi-tenancy izolimi — si u zgjidh |
+| 4:30–5:15 | **Kufizimet** | 3 gjëra që do të përmirësohen |
+| 5:15–5:45 | **Mbyllja** | Vlera e projektit + pyetje |
+
+---
+
+## 8. PLAN B — Nëse diçka nuk funksionon live
+
+### Skenari 1: Render është i ngadalshëm (cold start)
+**Veprimi:** Hap aplikacionin 10 minuta para prezantimit.
+**Fjalia:** *"Render free tier ka cold start — e kam hapur 
+paraprakisht për ta ngrohur serverin."*
+
+### Skenari 2: Login nuk funksionon
+**Veprimi:** Shfaq screenshot-in e dashboard-it.
+**Fjalia:** *"Po kaloj te screenshot-et e ruajtura — 
+flow-i është dokumentuar hap pas hapi."*
+**Backup:** Screenshot i dashboard-it me të dhëna reale.
+
+### Skenari 3: Produkti nuk ruhet
+**Veprimi:** Shfaq screenshot-in e listës me produkte.
+**Fjalia:** *"Logjika ekziston në productRoutes.js — 
+e kemi testuar dhe dokumentuar në README."*
+
+### Skenari 4: Porosi nuk krijohet
+**Veprimi:** Shfaq screenshot-in e porosisë së krijuar.
+**Fjalia:** *"Kontrolli i stokut dhe zbritja automatike 
+janë në orderRoutes.js rreshtat 58-105 — mund ta 
+tregoj direkt në kod."*
+
+### Skenari 5: Interneti nuk funksionon
+**Veprimi:** Hap video backup 30 sekondash.
+**Backup:** Video e shkurtër e flow-it kryesor e 
+regjistruar paraprakisht.
+
+### Screenshot-et e ruajtura (Plan B materials):
+- [ ] Dashboard me statistika
+- [ ] Lista e produkteve me SKU
+- [ ] Formulari i porosisë me dropdown
+- [ ] Produkti para porosisë (sasia=100)
+- [ ] Produkti pas porosisë (sasia=70)
+- [ ] Ekrani i regjistrimit me kredencialet e ekipit
+- [ ] Faqja "Ekipi im" me të tre rolet
+
+---
+
+## 9. Checklist para prezantimit
+
+- [ ] Hap Render 10 minuta para (cold start)
+- [ ] Kyçu me llogarinë demo paraprakisht
+- [ ] Ke hapur tab-et: /login, /products, /orders, /customers
+- [ ] Ke kredencialet demo të gatshme
+- [ ] Screenshot-et janë në desktop
+- [ ] Video backup është e gatshme
+- [ ] Ke praktikuar flow-in një herë me kohëmatës
+
+---
+
+*Projekti: StockFlow | Studente: Artiola Qollaku*
+*Universiteti "Isa Boletini" — Mitrovicë*
+*Lënda: Software Engineering*
+
+---
